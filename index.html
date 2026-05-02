@@ -1,0 +1,1851 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extractor UCO v4 - Base Actualizada</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        if (window.pdfjsLib) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+    </script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 15px;
+        }
+        .container { max-width: 1850px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 5px; color: #00d4ff; font-size: 1.4rem; }
+        .subtitle { text-align: center; color: #888; margin-bottom: 15px; font-size: 0.8rem; }
+
+        .main-layout { display: grid; grid-template-columns: 400px 1fr; gap: 15px; }
+
+        .panel {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .panel h2 { color: #00d4ff; margin-bottom: 10px; font-size: 1rem; }
+
+        textarea {
+            width: 100%; height: 260px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: #fff; padding: 12px;
+            font-family: 'Consolas', monospace;
+            font-size: 11px;
+            resize: vertical;
+        }
+        textarea:focus { outline: none; border-color: #00d4ff; }
+
+        .dropzone {
+            border: 2px dashed rgba(0, 212, 255, 0.4);
+            border-radius: 8px;
+            padding: 18px;
+            text-align: center;
+            color: #888;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(0, 212, 255, 0.03);
+            font-size: 0.85rem;
+        }
+        .dropzone:hover { border-color: #00d4ff; color: #00d4ff; background: rgba(0, 212, 255, 0.08); }
+        .dropzone.active { border-color: #00ff88; color: #00ff88; background: rgba(0, 255, 136, 0.1); }
+        .dropzone.loading { border-color: #ffc107; color: #ffc107; background: rgba(255, 193, 7, 0.08); }
+        .dropzone .main { font-weight: bold; margin-bottom: 4px; }
+        .dropzone .sub { font-size: 0.72rem; opacity: 0.7; }
+        .dropzone input[type="file"] { display: none; }
+        .mode-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-size: 0.8rem;
+        }
+        .mode-toggle label {
+            cursor: pointer;
+            padding: 6px 10px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            flex: 1;
+            text-align: center;
+        }
+        .mode-toggle input[type="radio"] { display: none; }
+        .mode-toggle input[type="radio"]:checked + label {
+            background: rgba(0, 212, 255, 0.2);
+            border-color: #00d4ff;
+            color: #00d4ff;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+            color: #000; border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(0,212,255,0.4); }
+        .btn-success { background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%); color: #fff; }
+        .btn-warning { background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); color: #000; }
+        .btn-small { padding: 8px 15px; font-size: 0.75rem; width: auto; margin: 0; }
+
+        .id-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .id-inputs label { font-size: 0.75rem; color: #aaa; }
+        .id-inputs input {
+            width: 100%;
+            padding: 8px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 0.85rem;
+        }
+        .id-inputs input:focus { outline: none; border-color: #00d4ff; }
+
+        .tabs { display: flex; gap: 4px; margin-bottom: 10px; flex-wrap: wrap; }
+        .tab {
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 8px 8px 0 0;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+        .tab:hover { background: rgba(255,255,255,0.15); }
+        .tab.active { background: rgba(0,212,255,0.3); color: #00d4ff; font-weight: bold; }
+        .tab .count {
+            background: rgba(255,255,255,0.2);
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.65rem;
+            margin-left: 4px;
+        }
+        .tab.active .count { background: #00d4ff; color: #000; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+        .data-table th {
+            background: rgba(0,212,255,0.2);
+            padding: 6px 8px;
+            text-align: left;
+            font-weight: 500;
+            color: #00d4ff;
+            position: sticky;
+            top: 0;
+        }
+        .data-table td { padding: 5px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .data-table tr:hover { background: rgba(255,255,255,0.05); }
+
+        .value-si { color: #4CAF50; font-weight: bold; }
+        .value-no { color: #555; }
+        .value-num { color: #00d4ff; }
+        .value-text { color: #ffd93d; }
+
+        .table-container {
+            max-height: 350px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+
+        .copy-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0,100,0,0.2);
+            border-radius: 8px;
+            border: 1px solid #4CAF50;
+        }
+        .copy-row span { flex: 1; font-size: 0.75rem; color: #aaa; }
+
+        .stats-bar { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+        .stat {
+            background: rgba(0,0,0,0.3);
+            padding: 8px 12px;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 70px;
+        }
+        .stat .num { font-size: 1.2rem; font-weight: bold; color: #00d4ff; }
+        .stat .label { font-size: 0.65rem; color: #888; }
+
+        .col-order {
+            font-size: 0.65rem;
+            color: #666;
+            margin-top: 5px;
+            padding: 8px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 5px;
+            max-height: 60px;
+            overflow-y: auto;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: #00d4ff; border-radius: 3px; }
+
+        .alert { padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 0.8rem; }
+        .alert-success { background: rgba(76,175,80,0.2); border: 1px solid #4CAF50; }
+        .alert-info { background: rgba(0,212,255,0.2); border: 1px solid #00d4ff; }
+
+        .section-row { background: rgba(0,212,255,0.1); }
+        .section-row td { color: #00d4ff; font-weight: bold; font-size: 0.7rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>&#x1FAC0; Extractor UCO v4</h1>
+        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 51 | Internaciones 108 | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 17)</p>
+
+        <div class="main-layout">
+            <div class="panel">
+                <h2>&#x1F4CB; Texto del Epicrisis</h2>
+
+                <div class="id-inputs">
+                    <div>
+                        <label>DNI Paciente (opcional si est&aacute; en texto):</label>
+                        <input type="text" id="dniPaciente" placeholder="Se extrae del texto si est&aacute;">
+                    </div>
+                    <div>
+                        <label>ID Internaci&oacute;n:</label>
+                        <input type="text" id="idInternacion" placeholder="Ej: 494546">
+                    </div>
+                </div>
+
+                <div class="mode-toggle">
+                    <input type="radio" name="inputMode" id="modePdf" value="pdf" checked>
+                    <label for="modePdf">&#x1F4C4; Subir PDF</label>
+                    <input type="radio" name="inputMode" id="modeText" value="text">
+                    <label for="modeText">&#x270F;&#xFE0F; Pegar texto</label>
+                </div>
+
+                <div id="dropzone" class="dropzone" onclick="document.getElementById('pdfInput').click();">
+                    <div class="main">Arrastr&aacute; un PDF ac&aacute; o hac&eacute; click</div>
+                    <div class="sub">El texto extra&iacute;do aparece abajo y se puede editar antes de procesar</div>
+                    <input type="file" id="pdfInput" accept="application/pdf,.pdf">
+                </div>
+
+                <textarea id="inputText" placeholder="Peg&aacute; ac&aacute; el texto del epicrisis...
+
+El extractor detecta autom&aacute;ticamente:
+&bull; Nombre y Apellido (primera l&iacute;nea)
+&bull; DNI del texto
+&bull; Fechas de ingreso/egreso
+&bull; FRCV, comorbilidades, antecedentes
+&bull; FEVI, TAPSE
+&bull; Procedimientos (ATC, stents)
+&bull; Medicaci&oacute;n al egreso
+&bull; Signos vitales al ingreso (TA, FC, SatO2)
+&bull; NYHA, scores de riesgo
+&bull; Dosis de medicaci&oacute;n
+&bull; Medicaci&oacute;n previa (si se detecta secci&oacute;n)"></textarea>
+
+                <button class="btn" onclick="extraerDatos()">&#x1F50D; EXTRAER DATOS</button>
+                <button class="btn btn-warning" onclick="limpiar()">&#x1F5D1;&#xFE0F; Limpiar</button>
+
+                <div id="alertBox"></div>
+            </div>
+
+            <div class="panel">
+                <h2>&#x1F4CA; Datos Extra&iacute;dos por Hoja</h2>
+
+                <div class="stats-bar" id="statsBar" style="display:none;">
+                    <div class="stat"><div class="num" id="statPac">0</div><div class="label">Pacientes</div></div>
+                    <div class="stat"><div class="num" id="statInt">0</div><div class="label">Internaci&oacute;n</div></div>
+                    <div class="stat"><div class="num" id="statProc">0</div><div class="label">Procedim.</div></div>
+                    <div class="stat"><div class="num" id="statLab">0</div><div class="label">Laboratorio</div></div>
+                    <div class="stat"><div class="num" id="statMed">0</div><div class="label">Medicaci&oacute;n</div></div>
+                    <div class="stat"><div class="num" id="statSeg">0</div><div class="label">Seguimiento</div></div>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab active" onclick="showTab('pacientes')">&#x1F464; Pacientes <span class="count" id="countPac">0</span></button>
+                    <button class="tab" onclick="showTab('internaciones')">&#x1F3E5; Internaciones <span class="count" id="countInt">0</span></button>
+                    <button class="tab" onclick="showTab('procedimientos')">&#x2695;&#xFE0F; Procedimientos <span class="count" id="countProc">0</span></button>
+                    <button class="tab" onclick="showTab('laboratorio')">&#x1F9EA; Laboratorio <span class="count" id="countLab">0</span></button>
+                    <button class="tab" onclick="showTab('medicacion')">&#x1F48A; Medicaci&oacute;n <span class="count" id="countMed">0</span></button>
+                    <button class="tab" onclick="showTab('seguimiento')">&#x1F4C5; Seguimiento <span class="count" id="countSeg">0</span></button>
+                </div>
+
+                <div id="tabContents">
+                    <div id="tab-pacientes" class="tab-content active">
+                        <div class="table-container"><table class="data-table" id="tablePacientes"></table></div>
+                        <div class="col-order" id="orderPac"></div>
+                        <div class="copy-row">
+                            <span>Copiar fila &rarr; Hoja "Pacientes" (50 cols)</span>
+                            <button class="btn btn-success btn-small" onclick="copiarHoja('pacientes')">&#x1F4CB; Copiar</button>
+                        </div>
+                    </div>
+
+                    <div id="tab-internaciones" class="tab-content">
+                        <div class="table-container"><table class="data-table" id="tableInternaciones"></table></div>
+                        <div class="col-order" id="orderInt"></div>
+                        <div class="copy-row" style="flex-wrap: wrap;">
+                            <span style="width:100%; margin-bottom:8px;">&#x26A0;&#xFE0F; Copiar en 2 partes para no pisar f&oacute;rmulas de D&iacute;as:</span>
+                            <button class="btn btn-success btn-small" onclick="copiarInternacionesParte1()">&#x1F4CB; 1) Copiar A-D (IDs + Fechas)</button>
+                            <button class="btn btn-success btn-small" onclick="copiarInternacionesParte2()">&#x1F4CB; 2) Copiar I en adelante (Dx + Scores + Inf + Arr + Drogas + Soporte)</button>
+                        </div>
+                    </div>
+
+                    <div id="tab-procedimientos" class="tab-content">
+                        <div class="table-container"><table class="data-table" id="tableProcedimientos"></table></div>
+                        <div class="col-order" id="orderProc"></div>
+                        <div class="copy-row">
+                            <span>Copiar fila &rarr; Hoja "Procedimientos" (14 cols)</span>
+                            <button class="btn btn-success btn-small" onclick="copiarHoja('procedimientos')">&#x1F4CB; Copiar</button>
+                        </div>
+                    </div>
+
+                    <div id="tab-laboratorio" class="tab-content">
+                        <div class="table-container"><table class="data-table" id="tableLaboratorio"></table></div>
+                        <div class="col-order" id="orderLab"></div>
+                        <div class="copy-row">
+                            <span>Copiar fila &rarr; Hoja "Laboratorio" (16 cols)</span>
+                            <button class="btn btn-success btn-small" onclick="copiarHoja('laboratorio')">&#x1F4CB; Copiar</button>
+                        </div>
+                    </div>
+
+                    <div id="tab-medicacion" class="tab-content">
+                        <div class="table-container"><table class="data-table" id="tableMedicacion"></table></div>
+                        <div class="col-order" id="orderMed"></div>
+                        <div class="copy-row" style="flex-wrap: wrap;">
+                            <span style="width:100%; margin-bottom:8px;">Copiar fila &rarr; Hoja "Medicaci&oacute;n" (35 cols)</span>
+                            <button class="btn btn-success btn-small" onclick="copiarHoja('medicacion')">&#x1F4CB; Copiar Egreso</button>
+                            <button class="btn btn-success btn-small" onclick="copiarMedicacionPrevia()" id="btnMedPrevia" style="display:none;">&#x1F4CB; Copiar Previa</button>
+                        </div>
+                    </div>
+
+                    <div id="tab-seguimiento" class="tab-content">
+                        <div class="table-container"><table class="data-table" id="tableSeguimiento"></table></div>
+                        <div class="col-order" id="orderSeg"></div>
+                        <div class="copy-row">
+                            <span>Copiar fila &rarr; Hoja "Seguimiento" (17 cols) - Completar manualmente</span>
+                            <button class="btn btn-success btn-small" onclick="copiarHoja('seguimiento')">&#x1F4CB; Copiar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =====================================================
+        // ESTRUCTURA EXACTA - Base_UCO Google Sheet
+        // Columnas en el MISMO orden que las hojas del Sheet
+        // =====================================================
+
+        const COL_PACIENTES = [
+            'DNI_Paciente', 'Apellido', 'Nombre', 'Fecha_Nac', 'Edad', 'Sexo', 'Teléfono', 'Obra_Social',
+            'HTA', 'DLP', 'DBT', 'Tipo_DBT', 'TBQ', 'Paq_Año', 'Obesidad', 'Sobrepeso', 'AHF',
+            'ERC', 'Diálisis', 'EPOC', 'SAHOS', 'Hipotir', 'Anemia', 'Hepatop',
+            'Valvular', 'FA_Flutter', 'IC_Previa', 'ACV_Previo', 'Art_Perif',
+            'IAM_Previo', 'ATC_Previa', 'CRM_Previo', 'Cx_Valv', 'TAVI', 'MCP', 'CDI', 'TRC',
+            'Flutter_Previo', 'TVS_Previa', 'TVNS_Previa', 'TPS_Previa',
+            'BAV_Previo', 'WPW_Previo', 'BS_Previa', 'ENS_Previa', 'EI_Previa',
+            'EAo_Sev', 'EAo_Mod', 'IM_Mod_Sev', 'IT_Mod_Sev', 'IP_Mod_Sev'
+        ]; // 51 cols
+
+        const COL_INTERNACIONES = [
+            'ID_Intern', 'ID_Paciente', 'Fecha_Ing', 'Fecha_Egr', 'Días_UCO', 'Dias_RCV', 'Días_Piso',
+            'Días_Total', 'Motivo_Texto', 'Programado', 'Derivado', 'FEVI_%', 'FEVI_Rango', 'TAPSE', 'Disf_VD', 'Destino',
+            'Causa_Óbito', 'TA_Ing', 'FC_Ing', 'SatO2_Ing', 'NYHA_Ing', 'NYHA_Egr', 'PCR_Intra', 'T_Onset_Door',
+            'T_Door_ECG', 'T_Door_Balloon', 'T_Door_Needle', 'GRACE_Score', 'TIMI_Score', 'CHA2DS2_VASc',
+            'HAS_BLED', 'SCASEST', 'SCACEST', 'AI bajo riesgo', 'AI mod riesgo', 'AI alto riesgo', 'Killip',
+            'ANOCA', 'MINOCA', 'INOCA', 'DPE', 'IAM_Tipo1', 'IAM_Tipo2', 'IAM_Tipo3a', 'IAM_Tipo3b',
+            'IAM_Tipo3c', 'IAM_Tipo4', 'ICC', 'Cardiorenal', 'SBVM', 'Shock Cardiogenico', 'Síncope',
+            'Arr_FAARV', 'Arr_FABRV', 'Arr_Flutter', 'Arr_TVS', 'Arr_TVNS', 'Arr_TPS', 'Arr_BAV', 'Arr_ENS',
+            'Arr_WPW', 'Taq_Auricular', 'Arr_BS', 'BAV_1', 'BAV_2M1', 'BAV_2M2', 'BAV_Alto_Grado', 'Arr_Implante_MCP',
+            'MCP_Tipo',
+            'Arr_EOL', 'Arr_ERI', 'Arr_Otros_MCP', 'TEP_Alto', 'TEP_Intermedio_Alto', 'TEP_Intermedio_Bajo',
+            'TEP_Bajo', 'TEP_Cronico', 'PESI_Score', 'RIETE_Score',
+            'Urgencia_HTA', 'Emergencia_HTA',
+            'POP_TAVI', 'POP_Cx_Valvular', 'POP_Endoprotesis_Ao', 'POP_Angioplastia_Vascular',
+            'Endocarditis_Inf', 'Disnea_Estudio',
+            'Otro_Dx', 'Droga_NAD', 'Droga_Adre', 'Droga_Dopa',
+            'Droga_Dobu', 'Droga_Levo', 'Droga_Milri', 'Droga_Iso', 'Droga_NTG', 'Droga_NPS', 'Sop_ARM_IOT',
+            'Sop_ARM_Traqueo', 'Sop_VNI', 'Sop_BIAC', 'Sop_BIC_Furo', 'Sop_Via_Central', 'Sop_Cook',
+            'Sop_Sonda', 'Sop_TAM', 'Sop_MCP_Trans', 'Sop_Amiodarona_EV', 'Inf_IAC', 'Inf_NAV', 'Inf_NAC',
+            'Inf_ITU', 'Inf_IPPB', 'Inf_Otros', 'CRUSADE_Score'
+        ]; // 115 cols
+
+        const COL_PROCEDIMIENTOS = [
+            'ID_Proc', 'ID_Intern', 'Fecha', 'Tipo', 'Territorio', 'Vaso',
+            'N_Stents', 'Tipo_Stent', 'Vía', 'Éxito', 'Complicación', 'Sangrado', 'Hematoma', 'Reinterv'
+        ]; // 14 cols
+
+        const COL_LABORATORIO = [
+            'ID_Intern', 'Momento', 'Troponina', 'NT_proBNP', 'Hb', 'Hto',
+            'Urea', 'Creat', 'CT', 'LDL', 'HDL', 'TG', 'Glucemia', 'HbA1c', 'Na', 'K'
+        ]; // 16 cols
+
+        const COL_MEDICACION = [
+            'ID_Intern', 'Momento', 'AAS', 'Clopidogrel', 'Prasugrel', 'Ticagrelor',
+            'Acenocum', 'Rivarox', 'Apixaban', 'Dabigatran', 'HBPM',
+            'BB', 'IECA', 'ARA2', 'Sacub_Vals', 'ARM', 'SGLT2i', 'BloqCa', 'Nitrato',
+            'Estatina', 'Dosis_Est', 'Furosemida', 'Tiazida', 'Amiodarona',
+            'Dosis_AAS', 'Dosis_Clopi', 'Dosis_BB', 'Dosis_IECA', 'Dosis_ARA2',
+            'Dosis_Sacub', 'Dosis_ARM', 'Dosis_Estatina', 'Dosis_SGLT2i', 'Dosis_Furo', 'Dosis_ACOD'
+        ]; // 35 cols
+
+        const COL_SEGUIMIENTO = [
+            'ID_Seguim', 'ID_Intern', 'Fecha_Contacto', 'Ventana', 'Vivo', 'Causa_Muerte',
+            'Reingreso_CV', 'Reingreso_IC', 'Reinfarto', 'Re_ATC', 'ACV_Post', 'MACE',
+            'NYHA_Actual', 'Control_Cardio', 'Adherencia', 'FEY_Control', 'Notas'
+        ]; // 17 cols
+
+        let datos = { pacientes: {}, internaciones: {}, procedimientos: {}, laboratorio: {}, medicacion: {}, seguimiento: {} };
+        let datosMedPrevia = null; // segunda fila de medicación previa
+
+        // =====================================================
+        // PDF input: drag-and-drop + file picker
+        // =====================================================
+
+        async function extraerTextoDesdePDF(file) {
+            if (!window.pdfjsLib) {
+                throw new Error('pdf.js no cargó — verificá tu conexión a internet');
+            }
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            const paginas = [];
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                // Reconstruir líneas usando las coordenadas Y de los items
+                const items = content.items;
+                const lineas = {};
+                for (const it of items) {
+                    const y = Math.round(it.transform[5]);
+                    if (!lineas[y]) lineas[y] = [];
+                    lineas[y].push({ x: it.transform[4], str: it.str });
+                }
+                // Ordenar líneas por Y descendente (PDF coord: arriba = Y grande) y items por X
+                const ys = Object.keys(lineas).map(Number).sort((a, b) => b - a);
+                const lineasTexto = ys.map(y => {
+                    const items = lineas[y].sort((a, b) => a.x - b.x);
+                    return items.map(i => i.str).join(' ').replace(/\s+/g, ' ').trim();
+                }).filter(l => l);
+                paginas.push(lineasTexto.join('\n'));
+            }
+            return paginas.join('\n\n');
+        }
+
+        async function procesarPDF(file) {
+            const dz = document.getElementById('dropzone');
+            const txt = document.getElementById('inputText');
+            try {
+                dz.classList.remove('active');
+                dz.classList.add('loading');
+                dz.querySelector('.main').textContent = `Procesando ${file.name}…`;
+                dz.querySelector('.sub').textContent = 'Extrayendo texto del PDF';
+                const texto = await extraerTextoDesdePDF(file);
+                txt.value = texto;
+                dz.classList.remove('loading');
+                dz.classList.add('active');
+                dz.querySelector('.main').textContent = `✓ ${file.name}`;
+                dz.querySelector('.sub').textContent = `${texto.length} caracteres · ${texto.split('\n').length} líneas · editá abajo si hace falta`;
+            } catch (e) {
+                dz.classList.remove('loading', 'active');
+                dz.querySelector('.main').textContent = '✗ Error leyendo PDF';
+                dz.querySelector('.sub').textContent = e.message || 'Error desconocido — probá con otro PDF o pegá el texto';
+                console.error(e);
+            }
+        }
+
+        function setInputMode(mode) {
+            const dz = document.getElementById('dropzone');
+            const toggle = document.querySelectorAll('input[name="inputMode"]');
+            if (mode === 'text') {
+                dz.style.display = 'none';
+            } else {
+                dz.style.display = '';
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const dz = document.getElementById('dropzone');
+            const fileInput = document.getElementById('pdfInput');
+            const radios = document.querySelectorAll('input[name="inputMode"]');
+
+            // File picker
+            fileInput.addEventListener('change', (e) => {
+                const f = e.target.files[0];
+                if (f) procesarPDF(f);
+                fileInput.value = ''; // permite re-seleccionar el mismo archivo
+            });
+
+            // Drag and drop
+            ['dragenter', 'dragover'].forEach(ev => {
+                dz.addEventListener(ev, (e) => { e.preventDefault(); e.stopPropagation(); dz.classList.add('active'); });
+            });
+            ['dragleave', 'drop'].forEach(ev => {
+                dz.addEventListener(ev, (e) => { e.preventDefault(); e.stopPropagation(); dz.classList.remove('active'); });
+            });
+            dz.addEventListener('drop', (e) => {
+                const f = e.dataTransfer.files[0];
+                if (!f) return;
+                const esPDF = /pdf/i.test(f.type) || /\.pdf$/i.test(f.name);
+                if (esPDF) {
+                    procesarPDF(f);
+                } else {
+                    dz.querySelector('.main').textContent = '✗ Solo PDFs';
+                    dz.querySelector('.sub').textContent = `Recibí "${f.name}" — arrastrá un archivo .pdf`;
+                }
+            });
+
+            // Mode toggle
+            radios.forEach(r => r.addEventListener('change', () => setInputMode(r.value)));
+            setInputMode(document.querySelector('input[name="inputMode"]:checked').value);
+        });
+
+        // =====================================================
+        // UI: Tabs
+        // =====================================================
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[onclick="showTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+
+        // =====================================================
+        // Helpers de extracción
+        // =====================================================
+
+        function buscarSiNo(texto, keywords) {
+            for (const kw of keywords) {
+                const regex = new RegExp(kw, 'i');
+                if (regex.test(texto)) return 'Sí';
+            }
+            return 'No';
+        }
+
+        // Capitalizar nombres
+        function capitalize(str) {
+            if (!str) return '';
+            return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+        }
+
+        // Extraer dosis de un medicamento dado patrones de nombres argentinos
+        function extraerDosis(texto, nombres) {
+            for (const nombre of nombres) {
+                // Match: nombre + espacio + dosis con mg o sin unidad
+                const regex = new RegExp('(' + nombre + ')\\s+(\\d+[\\.,]?\\d*)(?:\\s*/\\s*(\\d+[\\.,]?\\d*))?\\s*(mg|g)?', 'i');
+                const match = texto.match(regex);
+                if (match) {
+                    let dosis = match[1] + ' ' + match[2];
+                    if (match[3]) dosis += '/' + match[3];
+                    if (match[4]) dosis += ' ' + match[4];
+                    else dosis += ' mg';
+                    return dosis;
+                }
+            }
+            return '';
+        }
+
+        // Buscar sección de medicación previa / habitual
+        function extraerSeccionPrevia(texto) {
+            const patrones = [
+                /medicaci[oó]n\s+habitual[:\s]*([\s\S]*?)(?=\n\s*\n|\nmedicaci[oó]n\s+(?:al\s+)?(?:egreso|alta)|$)/i,
+                /tratamiento\s+previo[:\s]*([\s\S]*?)(?=\n\s*\n|\nmedicaci[oó]n\s+(?:al\s+)?(?:egreso|alta)|$)/i,
+                /medicaci[oó]n\s+previa[:\s]*([\s\S]*?)(?=\n\s*\n|\nmedicaci[oó]n\s+(?:al\s+)?(?:egreso|alta)|$)/i
+            ];
+            for (const patron of patrones) {
+                const match = texto.match(patron);
+                if (match) return match[1];
+            }
+            return null;
+        }
+
+        // =====================================================
+        // Extracción de medicación (reutilizable para Egreso y Previo)
+        // =====================================================
+
+        function extraerMedicacionDesdeTexto(textoSeccion, idInternacion, momento) {
+            const med = {};
+            const textoLower = textoSeccion.toLowerCase();
+
+            med.ID_Intern = idInternacion;
+            med.Momento = momento;
+
+            med.AAS = buscarSiNo(textoLower, ['aspirina', '\\baas\\b', 'ácido acetilsalic']);
+            med.Clopidogrel = buscarSiNo(textoLower, ['clopidogrel']);
+            med.Prasugrel = buscarSiNo(textoLower, ['prasugrel']);
+            med.Ticagrelor = buscarSiNo(textoLower, ['ticagrelor']);
+            med.Acenocum = buscarSiNo(textoLower, ['acenocumarol']);
+            med.Rivarox = buscarSiNo(textoLower, ['rivaroxab[aá]n']);
+            med.Apixaban = buscarSiNo(textoLower, ['apixab[aá]n']);
+            med.Dabigatran = buscarSiNo(textoLower, ['dabigatr[aá]n']);
+            med.HBPM = buscarSiNo(textoLower, ['enoxaparina', 'hbpm', 'heparina de bajo peso']);
+            med.BB = buscarSiNo(textoLower, ['bisoprolol', 'carvedilol', 'metoprolol', 'nebivolol', 'atenolol']);
+            med.IECA = buscarSiNo(textoLower, ['enalapril', 'ramipril', 'lisinopril', 'perindopril']);
+            med.ARA2 = buscarSiNo(textoLower, ['losart[aá]n', 'valsart[aá]n', 'candesart[aá]n', 'olmesart[aá]n', 'telmisart[aá]n']);
+            med.Sacub_Vals = buscarSiNo(textoLower, ['sacubitrilo', 'entresto']);
+            med.ARM = buscarSiNo(textoLower, ['espironolactona', 'eplerenona']);
+            med.SGLT2i = buscarSiNo(textoLower, ['dapagliflozina', 'empagliflozina', 'canagliflozina', 'forxiga', 'jardiance']);
+            med.BloqCa = buscarSiNo(textoLower, ['amlodipina', 'diltiazem', 'verapamilo', 'nifedipina']);
+            med.Nitrato = buscarSiNo(textoLower, ['nitroglicerina', 'isosorbide', 'mononitrato']);
+            med.Estatina = buscarSiNo(textoLower, ['atorvastatina', 'rosuvastatina', 'simvastatina']);
+
+            // Dosis estatina Alta/Baja
+            const dosisEst = textoSeccion.match(/atorvastatina\s*(\d+)/i) || textoSeccion.match(/rosuvastatina\s*(\d+)/i);
+            if (dosisEst) {
+                const d = parseInt(dosisEst[1]);
+                const esAtor = /atorvastatina/i.test(textoSeccion);
+                med.Dosis_Est = (esAtor && d >= 40) || (!esAtor && d >= 20) ? 'Alta' : 'Baja';
+            } else med.Dosis_Est = '';
+
+            med.Furosemida = buscarSiNo(textoLower, ['furosemida', 'lasix']);
+            med.Tiazida = buscarSiNo(textoLower, ['hidroclorotiazida', 'tiazida', 'indapamida']);
+            med.Amiodarona = buscarSiNo(textoLower, ['amiodarona']);
+
+            // ===== Columnas de dosis =====
+            med.Dosis_AAS = (med.AAS === 'Sí') ? extraerDosis(textoSeccion, ['aspirina', 'aas', 'ácido acetilsalicílico']) : '';
+            med.Dosis_Clopi = (med.Clopidogrel === 'Sí') ? extraerDosis(textoSeccion, ['clopidogrel']) : '';
+            med.Dosis_BB = (med.BB === 'Sí') ? extraerDosis(textoSeccion, ['bisoprolol', 'carvedilol', 'metoprolol', 'nebivolol', 'atenolol']) : '';
+            med.Dosis_IECA = (med.IECA === 'Sí') ? extraerDosis(textoSeccion, ['enalapril', 'ramipril', 'lisinopril', 'perindopril']) : '';
+            med.Dosis_ARA2 = (med.ARA2 === 'Sí') ? extraerDosis(textoSeccion, ['losartán', 'losartan', 'valsartán', 'valsartan', 'candesartán', 'candesartan', 'olmesartán', 'olmesartan', 'telmisartán', 'telmisartan']) : '';
+            med.Dosis_Sacub = (med.Sacub_Vals === 'Sí') ? extraerDosis(textoSeccion, ['sacubitrilo/valsartán', 'sacubitrilo\\/valsartan', 'sacubitrilo', 'entresto']) : '';
+            med.Dosis_ARM = (med.ARM === 'Sí') ? extraerDosis(textoSeccion, ['espironolactona', 'eplerenona']) : '';
+            med.Dosis_Estatina = (med.Estatina === 'Sí') ? extraerDosis(textoSeccion, ['atorvastatina', 'rosuvastatina', 'simvastatina']) : '';
+            med.Dosis_SGLT2i = (med.SGLT2i === 'Sí') ? extraerDosis(textoSeccion, ['dapagliflozina', 'empagliflozina', 'canagliflozina', 'forxiga', 'jardiance']) : '';
+            med.Dosis_Furo = (med.Furosemida === 'Sí') ? extraerDosis(textoSeccion, ['furosemida', 'lasix']) : '';
+
+            const tieneACOD = (med.Rivarox === 'Sí' || med.Apixaban === 'Sí' || med.Dabigatran === 'Sí');
+            med.Dosis_ACOD = tieneACOD ? extraerDosis(textoSeccion, ['rivaroxabán', 'rivaroxaban', 'apixabán', 'apixaban', 'dabigatrán', 'dabigatran']) : '';
+
+            return med;
+        }
+
+        // =====================================================
+        // FUNCIÓN PRINCIPAL DE EXTRACCIÓN
+        // =====================================================
+
+        function extraerDatos() {
+            const texto = document.getElementById('inputText').value;
+            let dniPaciente = document.getElementById('dniPaciente').value || '';
+            const idInternacion = document.getElementById('idInternacion').value || '';
+
+            if (!texto.trim()) { alert('Por favor, pegá el texto del epicrisis'); return; }
+
+            const textoLower = texto.toLowerCase();
+            const lineas = texto.split('\n').map(l => l.trim()).filter(l => l);
+
+            datos = { pacientes: {}, internaciones: {}, procedimientos: {}, laboratorio: {}, medicacion: {}, seguimiento: {} };
+            datosMedPrevia = null;
+
+            // ===== SPLIT: Antecedentes vs Internación actual =====
+            // El corte es en "MI (dd/mm)" o "Cursó/Cursa internación (dd/mm) por..."
+            let splitIdx = -1;
+            const splitPatterns = [
+                /\bMI\s*\(\s*\d{1,2}\/\d{1,2}\)/i,
+                /Curs[oóaá]\s*internaci[oó]n\s*\(/i,
+                /Curs[oóaá]\s*internacion\s*\(/i,
+                /Curs[oóaá]\s*internaci[oó]n\s+por\b/i,
+                /Curs[oóaá]\s*internacion\s+por\b/i,
+                /Curs[oóaá]\s*internaci[oó]n\s+derivad/i,
+            ];
+            for (const pat of splitPatterns) {
+                const m = texto.search(pat);
+                if (m !== -1) { splitIdx = m; break; }
+            }
+
+            // textoAntec: todo lo anterior al corte (datos del paciente, FRCV, antecedentes CV)
+            // textoIntern: desde el corte en adelante (internación actual, procedimientos, lab, meds)
+            const textoAntec = splitIdx > 0 ? texto.substring(0, splitIdx) : '';
+            const textoIntern = splitIdx > 0 ? texto.substring(splitIdx) : texto;
+            const textoAntecLower = textoAntec.toLowerCase();
+            const textoInternLower = textoIntern.toLowerCase();
+
+            // ========== PACIENTES (50 cols) ==========
+
+            // --- Parser robusto de primera línea — 6 formatos ---
+            // F: Header impreso "Historia Clínica: APELLIDO, NOMBRE" + DNI + OS (header completo pegado)
+            // A: "DNI APELLIDO NOMBRE"                          (63% de los casos)
+            // B: "N°CAMA OS DNI APELLIDO NOMBRE"                (todo en 1 línea)
+            // C: "OS DNI" (línea 1) + "APELLIDO NOMBRE" (línea 2)
+            // D: "N°CAMA OS DNI" (línea 1) + "APELLIDO NOMBRE" (línea 2)
+            // E: "APELLIDO NOMBRE" (sin DNI ni OS)
+            let apellido = '';
+            let nombre = '';
+            let obraSocial = '';
+            let parsed = false;
+
+            const L1 = lineas[0] || '';
+            const L2 = lineas[1] || '';
+
+            // Formato F: Header impreso del sistema HC (médico pega el header completo)
+            // Line shape:
+            //   Historia Clínica: APELLIDO, NOMBRE
+            //   DNI: <valor> - O/S: <dígitos>            (o "DNI: <valor> - SIN COBERTURA")
+            //   <Obra Social> - <Plan>                    (línea con el nombre de la OS)
+            const hcMatch = texto.match(/Historia\s+Cl[ií]nica:\s*([A-Za-zÁÉÍÓÚÑáéíóúñ][A-Za-zÁÉÍÓÚÑáéíóúñ\s]*?)\s*,\s*([A-Za-zÁÉÍÓÚÑáéíóúñ][A-Za-zÁÉÍÓÚÑáéíóúñ\s]*?)(?=\n|\r|$)/i);
+            if (hcMatch) {
+                apellido = capitalize(hcMatch[1].trim());
+                nombre = hcMatch[2].trim().split(/\s+/).map(capitalize).join(' ');
+                parsed = true;
+
+                // DNI: "DNI: F5.125.531" o "DNI: 5125531" o "DNI: 5.125.531"
+                if (!dniPaciente) {
+                    const dniHdr = texto.match(/DNI[:\s]*([A-Z]?\d{1,3}(?:\.\d{3}){1,2}|\d{6,8})/i);
+                    if (dniHdr) dniPaciente = dniHdr[1];
+                }
+
+                // Obra Social: chequear si "SIN COBERTURA" está en la línea del DNI, sino tomar la siguiente línea
+                const dniLine = texto.match(/DNI[:\s][^\n\r]+/i);
+                if (dniLine && /SIN\s+COBERTURA/i.test(dniLine[0])) {
+                    obraSocial = 'SIN COBERTURA';
+                } else {
+                    const nextLine = texto.match(/DNI[:\s][^\n\r]*[\n\r]+\s*([^\n\r]+)/i);
+                    if (nextLine) {
+                        let os = nextLine[1].trim();
+                        // Limpiar si la línea es "Emitido por:" u otra metadata
+                        if (!/^(Emitido|Filtro|Fecha|Resumen|\d)/i.test(os)) {
+                            obraSocial = os;
+                        }
+                    }
+                }
+            }
+
+            // Formato B: N°CAMA(1-3 dig) OS DNI(6-8 dig) APELLIDO NOMBRE
+            if (!parsed) {
+                const mB = L1.match(/^(\d{1,5})\s+([A-Za-záéíóúñÁÉÍÓÚÑ]+)\s+(\d{6,8})\s+([A-Za-záéíóúñÁÉÍÓÚÑ]+)\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s]+)$/);
+                if (mB) {
+                    obraSocial = mB[2].toUpperCase();
+                    if (!dniPaciente) dniPaciente = mB[3];
+                    apellido = capitalize(mB[4].trim());
+                    nombre = mB[5].trim().split(/\s+/).map(capitalize).join(' ');
+                    parsed = true;
+                }
+            }
+
+            // Formato D: N°CAMA(1-3 dig) OS DNI(6-8 dig) (línea 1) + APELLIDO NOMBRE (línea 2)
+            if (!parsed) {
+                const mD = L1.match(/^(\d{1,5})\s+([A-Za-záéíóúñÁÉÍÓÚÑ]+)\s+(\d{6,8})$/);
+                if (mD && L2 && /^[A-Za-záéíóúñÁÉÍÓÚÑ]/.test(L2)) {
+                    obraSocial = mD[2].toUpperCase();
+                    if (!dniPaciente) dniPaciente = mD[3];
+                    const parts = L2.trim().split(/\s+/);
+                    apellido = capitalize(parts[0]);
+                    nombre = parts.slice(1).map(capitalize).join(' ');
+                    parsed = true;
+                }
+            }
+
+            // Formato C: OS(letras) DNI(6-8 dig) (línea 1) + APELLIDO NOMBRE (línea 2)
+            if (!parsed) {
+                const mC = L1.match(/^([A-Za-záéíóúñÁÉÍÓÚÑ]+)\s+(\d{6,8})$/);
+                if (mC && L2 && /^[A-Za-záéíóúñÁÉÍÓÚÑ]/.test(L2)) {
+                    obraSocial = mC[1].toUpperCase();
+                    if (!dniPaciente) dniPaciente = mC[2];
+                    const parts = L2.trim().split(/\s+/);
+                    apellido = capitalize(parts[0]);
+                    nombre = parts.slice(1).map(capitalize).join(' ');
+                    parsed = true;
+                }
+            }
+
+            // Formato A: DNI APELLIDO NOMBRE
+            // Acepta: 5125531, 5.125.531, F5.125.531 (con letra prefijo opcional y puntos opcionales)
+            if (!parsed) {
+                const mA = L1.match(/^([A-Z]?\d{1,3}(?:\.\d{3}){1,2}|\d{6,8})\s+([A-Za-záéíóúñÁÉÍÓÚÑ]+)\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s]+)$/);
+                if (mA) {
+                    if (!dniPaciente) dniPaciente = mA[1];
+                    apellido = capitalize(mA[2].trim());
+                    nombre = mA[3].trim().split(/\s+/).map(capitalize).join(' ');
+                    parsed = true;
+                }
+            }
+
+            // Formato E: APELLIDO NOMBRE (solo letras, sin números)
+            if (!parsed) {
+                for (let i = 0; i < Math.min(3, lineas.length); i++) {
+                    const linea = lineas[i];
+                    if (/^\d|^Var[oó]n|^Mujer|^MI\s|^Curs[oó]/i.test(linea)) continue;
+                    const mE = linea.match(/^([A-Za-záéíóúñÁÉÍÓÚÑ]+)\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s]+)$/);
+                    if (mE) {
+                        apellido = capitalize(mE[1].trim());
+                        nombre = mE[2].trim().split(/\s+/).map(capitalize).join(' ');
+                        parsed = true;
+                        break;
+                    }
+                }
+            }
+
+            // Fallback: buscar DNI en el texto si no se encontró
+            // Acepta formato numérico (5125531), con puntos (5.125.531) o con letra prefijo (F5.125.531)
+            if (!dniPaciente) {
+                const dniMatch = texto.match(/DNI[:\s]*([A-Z]?\d{1,3}(?:\.\d{3}){1,2}|\d{6,8})/i);
+                if (dniMatch) dniPaciente = dniMatch[1];
+            }
+
+            datos.pacientes.DNI_Paciente = dniPaciente;
+            datos.pacientes.Apellido = apellido;
+            datos.pacientes.Nombre = nombre;
+
+            datos.pacientes.Fecha_Nac = '';
+
+            // Edad
+            const edadMatch = texto.match(/(\d{1,3})\s*años/i);
+            if (edadMatch) datos.pacientes.Edad = parseInt(edadMatch[1]);
+
+            // Sexo
+            if (/\bvar[oó]n\b|\bmasculino\b/i.test(texto)) datos.pacientes.Sexo = 'M';
+            else if (/\bmujer\b|\bfemenin[ao]\b/i.test(texto)) datos.pacientes.Sexo = 'F';
+
+            datos.pacientes.Teléfono = '';
+            datos.pacientes.Obra_Social = obraSocial || '';
+
+            // FRCV
+            datos.pacientes.HTA = buscarSiNo(textoLower, ['hipertens', '\\bhta\\b']);
+            datos.pacientes.DLP = buscarSiNo(textoLower, ['dislip', '\\bdlp\\b', 'dislipemico']);
+            datos.pacientes.DBT = buscarSiNo(textoLower, ['diabet', '\\bdbt\\b']);
+
+            // Tipo_DBT — FIX v6.2: devolver 'No' cuando no hay DBT (matchea dropdown del Sheet)
+            if (datos.pacientes.DBT === 'Sí') {
+                if (/tipo\s*1|dbt\s*1|dbt1/i.test(texto)) datos.pacientes.Tipo_DBT = 'DBT1';
+                else if (/insulino\s*req|insulinorequiriente/i.test(texto) && !/no\s+insulino/i.test(texto)) datos.pacientes.Tipo_DBT = 'DIR';
+                else datos.pacientes.Tipo_DBT = 'DNIR';
+            } else datos.pacientes.Tipo_DBT = 'No';
+
+            // Tabaquismo mejorado
+            if (/ex[\s-]?tabaq|ex[\s-]?tbq/i.test(texto)) datos.pacientes.TBQ = 'Ex';
+            else if (/tabaq|fumador|\btbq\b/i.test(texto) && !/no\s+tabaq|no\s+fumador|ex[\s-]?tabaq/i.test(texto)) datos.pacientes.TBQ = 'Activo';
+            else datos.pacientes.TBQ = 'Nunca';
+
+            // Paquetes/año mejorado
+            const pyMatch = texto.match(/(\d+)\s*p[\/\s]?y/i) || texto.match(/\((\d+)\s*p[\/\s]?y\)/i) || texto.match(/(\d+)\s*paquetes?\s*a[ñn]o/i);
+            datos.pacientes.Paq_Año = pyMatch ? parseInt(pyMatch[1]) : '';
+
+            datos.pacientes.Obesidad = buscarSiNo(textoLower, ['\\bobes[oa]\\b', 'obesidad']);
+            datos.pacientes.Sobrepeso = buscarSiNo(textoLower, ['sobrepeso']);
+            datos.pacientes.AHF = buscarSiNo(textoLower, ['antecedentes familiares', '\\bahf\\b']);
+
+            // Comorbilidades
+            datos.pacientes.ERC = buscarSiNo(textoLower, ['renal cr[oó]nica', '\\berc\\b', '\\birc\\b', 'enfermedad renal']);
+            datos.pacientes.Diálisis = buscarSiNo(textoLower, ['di[aá]lisis', 'hemodi[aá]lisis']);
+            datos.pacientes.EPOC = buscarSiNo(textoLower, ['\\bepoc\\b']);
+            datos.pacientes.SAHOS = buscarSiNo(textoLower, ['sahos', 'apnea']);
+            datos.pacientes.Hipotir = buscarSiNo(textoLower, ['hipotiroid']);
+            datos.pacientes.Anemia = buscarSiNo(textoLower, ['\\banemia\\b']);
+            datos.pacientes.Hepatop = buscarSiNo(textoLower, ['hepatopat', 'cirrosis']);
+
+            // Antecedentes CV — buscan en textoAntecLower (sección pre-internación)
+            // Si no hay split (textoAntec vacío), buscan en textoLower completo como fallback
+            const antecLower = textoAntecLower || textoLower;
+
+            // FA_Flutter — FIX v6.1: dropdown específico (No / FA / AA Atípico / AA Típico Anti H / AA Típico Horario)
+            // FA gana sobre flutter cuando conviven (decisión del usuario).
+            // Búsqueda en antecLower (antecedentes del paciente).
+            (function() {
+                let fa = 'No';
+                const aleteoCtx = /aleteo\s+auricular|\bflutter\b|aleteo\s+at[ií]pico|flutter\s+at[ií]pico/.test(antecLower);
+                if (aleteoCtx) {
+                    if (/at[ií]pic/.test(antecLower)) {
+                        fa = 'AA Atípico';
+                    } else if (/anti[\s-]?horari/.test(antecLower)) {
+                        fa = 'AA Típico Anti H';
+                    } else if (/horari/.test(antecLower)) {
+                        fa = 'AA Típico Horario';
+                    } else {
+                        fa = 'AA Típico Horario'; // default si aleteo sin especificar
+                    }
+                }
+                if (/fibrilaci[oó]n\s+auricular|\bfa\b/.test(antecLower)) {
+                    fa = 'FA'; // FA gana sobre flutter
+                }
+                datos.pacientes.FA_Flutter = fa;
+            })();
+            datos.pacientes.IC_Previa = buscarSiNo(antecLower, ['insuficiencia card', 'cardiorrenal', '\\bicc\\b']);
+            datos.pacientes.ACV_Previo = buscarSiNo(antecLower, ['\\bacv\\b', '\\bait\\b', 'stroke']);
+            datos.pacientes.Art_Perif = buscarSiNo(antecLower, ['arteriopat.*perif', 'vascular perif', 'claudicaci', 'fontaine']);
+            datos.pacientes.IAM_Previo = buscarSiNo(antecLower, ['iam', 'infarto.*miocardio', 'iamcest', 'iamsest', 'infarto.*previo']);
+
+            // Procedimientos previos — buscan en antecedentes, con patrones ampliados
+            // ATC_Previa — FIX v6.1: dropdown específico (No / DA / Cx / CD / TCI / Ramus / Múltiple)
+            // BUG arreglado: el regex 'stent' (sin \b) matcheaba "con-STENT-es" y
+            // "Asi-STENT-e" → falso positivo. Ahora usa \bstent.
+            (function() {
+                const atcMentioned = /\bangioplast[ií]a|\batc\b|\bdes\b|\bstent|colocaci[oó]n.*\bstent/.test(antecLower);
+                let atcVal = 'No';
+                if (atcMentioned) {
+                    const territories = [];
+                    if (/\bda\b|descendente\s+anterior/.test(antecLower)) territories.push('DA');
+                    if (/\bcx\b|circunfleja/.test(antecLower)) territories.push('Cx');
+                    if (/\bcd\b|coronaria\s+derecha/.test(antecLower)) territories.push('CD');
+                    if (/\btci\b|tronco\s+(?:coronario\s+)?izquierd|\btronco\s+com[uú]n\b/.test(antecLower)) territories.push('TCI');
+                    if (/\bramus\b|ramus\s+intermedio/.test(antecLower)) territories.push('Ramus');
+                    if (territories.length === 0) atcVal = ''; // territory unknown → blanco para revisión manual
+                    else if (territories.length === 1) atcVal = territories[0];
+                    else atcVal = 'Múltiple';
+                }
+                datos.pacientes.ATC_Previa = atcVal;
+            })();
+            // CRM_Previo — FIX v6.2: dropdown específico (No / 1 Puente / 2 Puentes / 3 Puentes)
+            // Si menciona CRM/bypass sin cantidad explícita, queda blanco para revisión manual.
+            (function() {
+                const tieneCRM = /\bcrm\b|bypass|cirug.*revasculari/.test(antecLower);
+                if (!tieneCRM) {
+                    datos.pacientes.CRM_Previo = 'No';
+                    return;
+                }
+                if (/\b3\s*(?:puentes|by\s*pass|bypass)|tres\s+(?:puentes|by\s*pass)/.test(antecLower)) {
+                    datos.pacientes.CRM_Previo = '3 Puentes';
+                } else if (/\b2\s*(?:puentes|by\s*pass|bypass)|dos\s+(?:puentes|by\s*pass)/.test(antecLower)) {
+                    datos.pacientes.CRM_Previo = '2 Puentes';
+                } else if (/\b1\s*(?:puente|by\s*pass|bypass)|un\s+(?:puente|by\s*pass)|single\s+bypass/.test(antecLower)) {
+                    datos.pacientes.CRM_Previo = '1 Puente';
+                } else {
+                    datos.pacientes.CRM_Previo = ''; // CRM mencionado pero sin cantidad → blanco
+                }
+            })();
+            // Cx_Valv — FIX v6.2: dropdown específico (No / RVAo Mecánico / RVA Biológico / RVM)
+            // Si menciona Cx valvular sin tipo, queda blanco para revisión manual.
+            (function() {
+                const tieneCxValv = /cirug.*valvular|reemplazo\s+valvular|reemplazo.*v[aá]lvula/.test(antecLower);
+                if (!tieneCxValv && !/\brvao?\b|\brvm\b/.test(antecLower)) {
+                    datos.pacientes.Cx_Valv = 'No';
+                    return;
+                }
+                // RVM tiene prioridad si aparece explícito
+                if (/\brvm\b|reemplazo\s+valvular\s+mitral|reemplazo.*v[aá]lvula\s+mitral/.test(antecLower)) {
+                    datos.pacientes.Cx_Valv = 'RVM';
+                } else if (/(?:rvao?|reemplazo\s+valvular\s+a[oó]rtic|v[aá]lvula\s+a[oó]rtica).*(?:mec[aá]nic|met[aá]lic)|mec[aá]nic.*(?:a[oó]rtic|rvao?)/.test(antecLower)) {
+                    datos.pacientes.Cx_Valv = 'RVAo Mecánico';
+                } else if (/(?:rvao?|reemplazo\s+valvular\s+a[oó]rtic|v[aá]lvula\s+a[oó]rtica).*biol[oó]gic|biol[oó]gic.*(?:a[oó]rtic|rvao?)/.test(antecLower)) {
+                    datos.pacientes.Cx_Valv = 'RVA Biológico';
+                } else {
+                    datos.pacientes.Cx_Valv = ''; // Cx valvular sin especificar tipo → blanco
+                }
+            })();
+            datos.pacientes.TAVI = buscarSiNo(antecLower, ['\\btavi\\b']);
+            // MCP — FIX v6.1: dropdown específico (No / DDD / VVI / Otro)
+            // Detecta tipo de marcapaso en antecedentes del paciente.
+            (function() {
+                let mcp = 'No';
+                if (/dddr|\bddd\s*[-]?\s*r\b|\bddd\b/.test(antecLower)) {
+                    mcp = 'DDD';
+                } else if (/\bvvi\b/.test(antecLower)) {
+                    mcp = 'VVI';
+                } else if (/marcapaso|\bmcp\b/.test(antecLower)) {
+                    mcp = 'Otro';
+                }
+                datos.pacientes.MCP = mcp;
+            })();
+            datos.pacientes.CDI = buscarSiNo(antecLower, ['cardiodesfibrilador', '\\bcdi\\b']);
+            datos.pacientes.TRC = buscarSiNo(antecLower, ['\\btrc\\b', 'resincronizador']);
+
+            // Antecedentes de arritmias y EI — buscan en antecedentes
+            datos.pacientes.Flutter_Previo = buscarSiNo(antecLower, ['flutter', 'aleteo auricular']);
+            datos.pacientes.TVS_Previa = buscarSiNo(antecLower, ['tv sostenida', 'tvs', 'tvms', 'taquicardia ventricular.*sostenida']);
+            datos.pacientes.TVNS_Previa = buscarSiNo(antecLower, ['tv no sostenida', 'tvns', 'tvmns']);
+            datos.pacientes.TPS_Previa = buscarSiNo(antecLower, ['tpsv', 'taquicardia supraventricular', 'taquicardia parox']);
+            datos.pacientes.BAV_Previo = buscarSiNo(antecLower, ['\\bbav\\b', 'bloqueo.*auriculoventricular', 'bloqueo.*av\\b']);
+            datos.pacientes.WPW_Previo = buscarSiNo(antecLower, ['wpw', 'wolff.*parkinson']);
+            datos.pacientes.BS_Previa = buscarSiNo(antecLower, ['bradicardia sinusal']);
+            datos.pacientes.ENS_Previa = buscarSiNo(antecLower, ['enfermedad.*nodo sinusal', '\\bens\\b', 'disfunci[oó]n sinusal']);
+            datos.pacientes.EI_Previa = buscarSiNo(antecLower, ['endocarditis']);
+
+            // ===== Valvulopatías específicas (scan eco descriptions ETT/ETE) =====
+            datos.pacientes.EAo_Sev = /estenosis\s*a[oó]rtica\s*severa|eao\s*severa|eao\s*sev/i.test(texto) ? 'Sí' : 'No';
+            datos.pacientes.EAo_Mod = /estenosis\s*a[oó]rtica\s*moderada|eao\s*moderada|eao\s*mod/i.test(texto) ? 'Sí' : 'No';
+            datos.pacientes.IM_Mod_Sev = /insuficiencia\s*mitral\s*(?:severa|moderada|mod|sev|moderada.severa)/i.test(texto) ? 'Sí' : 'No';
+            datos.pacientes.IT_Mod_Sev = /insuficiencia\s*tric[uú]sp[ií]dea?\s*(?:severa|moderada|mod|sev)/i.test(texto) ? 'Sí' : 'No';
+            datos.pacientes.IP_Mod_Sev = /insuficiencia\s*pulmonar\s*(?:severa|moderada|mod|sev)/i.test(texto) ? 'Sí' : 'No';
+            // Valvular = Sí si cualquiera de las 5 específicas es Sí
+            // Valvular — FIX v6.2: dropdown específico (No / EAo Severa / EAo Moderada / IM mod - sev / IT mod - sev / IP mod - sev)
+            // Prioridad: EAo Severa > EAo Moderada > IM > IT > IP. Solo registra la más severa.
+            if (datos.pacientes.EAo_Sev === 'Sí')        datos.pacientes.Valvular = 'EAo Severa';
+            else if (datos.pacientes.EAo_Mod === 'Sí')   datos.pacientes.Valvular = 'EAo Moderada';
+            else if (datos.pacientes.IM_Mod_Sev === 'Sí') datos.pacientes.Valvular = 'IM mod - sev';
+            else if (datos.pacientes.IT_Mod_Sev === 'Sí') datos.pacientes.Valvular = 'IT mod - sev';
+            else if (datos.pacientes.IP_Mod_Sev === 'Sí') datos.pacientes.Valvular = 'IP mod - sev';
+            else                                           datos.pacientes.Valvular = 'No';
+
+            // ========== INTERNACIONES (104 cols) ==========
+            // Internaciones y Procedimientos buscan en textoIntern (post-split)
+            // para no confundir antecedentes con internación actual
+            const iTexto = textoIntern;          // texto de la internación actual
+            const iLower = textoInternLower;      // idem en minúsculas
+
+            datos.internaciones.ID_Intern = idInternacion;
+            datos.internaciones.ID_Paciente = dniPaciente;
+
+            // Fechas — FIX v6: buscar en TEXTO COMPLETO (no solo iTexto)
+            // Razón: en Formato F (header impreso del HC), los campos
+            // "Fecha de Internación" / "Fecha de Egreso" aparecen ANTES del
+            // split "Cursó internación por", por lo que están en textoAntec.
+            let fechaIng = null;
+
+            // Patrón 1: "MI (dd/mm)" o "MI (d/mm)" o "MI (dd/m)" — con o sin año
+            fechaIng = iTexto.match(/\bMI\s*\(\s*(\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)\s*\)/i);
+
+            // Patrón 2: "Fecha ingreso dd/mm/aaaa" (en TEXTO COMPLETO)
+            if (!fechaIng) {
+                fechaIng = texto.match(/Fecha\s+ingreso[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i);
+            }
+
+            // Patrón 3: "Fecha de internación dd/mm/aaaa" (en TEXTO COMPLETO)
+            if (!fechaIng) {
+                fechaIng = texto.match(/Fecha\s*(?:de\s*)?internaci[oó]n[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i);
+            }
+
+            if (fechaIng) datos.internaciones.Fecha_Ing = fechaIng[1];
+
+            let fechaEgr = texto.match(/Fecha\s+egreso[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i);
+            if (!fechaEgr) {
+                fechaEgr = texto.match(/Fecha\s*(?:de\s*)?egreso[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i);
+            }
+            if (fechaEgr) datos.internaciones.Fecha_Egr = fechaEgr[1];
+
+            // Días: dejar vacío (se calculan con fórmulas en la Sheet)
+            datos.internaciones.Días_UCO = '';
+            datos.internaciones.Dias_RCV = '';
+            datos.internaciones.Días_Piso = '';
+            datos.internaciones.Días_Total = '';
+
+            // Motivo de Internación (texto libre) — FIX v6
+            // Captura el campo estructurado "Motivo de Internación: <texto>" del HC.
+            // Útil porque los flags binarios pierden motivos atípicos (ej. angioplastía
+            // periférica, recambio MCP, endocarditis, síncope sin pródromos, etc).
+            const motivoTextoMatch = texto.match(/Motivo\s+de\s+Internaci[oó]n[:\s]*([^\n\r]+)/i);
+            datos.internaciones.Motivo_Texto = motivoTextoMatch ? motivoTextoMatch[1].trim() : '';
+
+            // Diagnósticos
+            datos.internaciones.Programado = buscarSiNo(iLower, ['programad']);
+            datos.internaciones.Derivado = buscarSiNo(iLower, ['derivad']);
+            datos.internaciones.SCASEST = buscarSiNo(iLower, ['scasest', 'iamsest', 'sca sin elevaci']);
+            datos.internaciones.SCACEST = buscarSiNo(iLower, ['scacest', 'iamcest', 'sca con elevaci']);
+
+            // Killip — FIX v6.2: dropdown del Sheet (NO / I / II / III / IV)
+            // Si no se menciona Killip (típico fuera de SCA), devuelve 'NO' (uppercase).
+            const kkMatch = iTexto.match(/killip\s*([ivIV]+|[1-4])/i);
+            datos.internaciones.Killip = kkMatch ? kkMatch[1].toUpperCase().replace('1','I').replace('2','II').replace('3','III').replace('4','IV') : 'NO';
+
+            // Angina inestable por riesgo
+            datos.internaciones['AI bajo riesgo'] = buscarSiNo(iLower, ['angina inestable.*bajo riesgo', 'ai.*bajo riesgo']);
+            datos.internaciones['AI mod riesgo'] = buscarSiNo(iLower, ['angina inestable.*moderado riesgo', 'ai.*moderado riesgo', 'ai.*mod.*riesgo']);
+            datos.internaciones['AI alto riesgo'] = buscarSiNo(iLower, ['angina inestable.*alto riesgo', 'ai.*alto riesgo']);
+
+            datos.internaciones.ICC = buscarSiNo(iLower, ['insuficiencia card.*descompensada', '\\bicc\\b', 'edema agudo']);
+            datos.internaciones.Cardiorenal = buscarSiNo(iLower, ['cardiorrenal', 'cardio.*renal', 's[ií]ndrome cardiorrenal']);
+            datos.internaciones.SBVM = buscarSiNo(iLower, ['\\bsbvm\\b', 'sangrado.*bajo volumen minuto', 'bajo volumen minuto']);
+            datos.internaciones['Shock Cardiogenico'] = buscarSiNo(iLower, ['shock cardiog[eé]nico', 'shock cardiol[oó]gico', 'shock.*cardiog']);
+            datos.internaciones['Síncope'] = buscarSiNo(iLower, ['s[ií]ncope']);
+
+            // ===== POSTOPERATORIOS (motivos de ingreso a UCO) =====
+
+            // Búsqueda en texto completo (motivo aparece antes del split)
+            const textoCompleto = texto;
+            const textoCompletoLower = textoLower;
+
+            // POP TAVI: "POP TAVI", "post(operatorio) TAVI", "colocación de dispositivo TAVI"
+            datos.internaciones.POP_TAVI = buscarSiNo(textoCompletoLower, [
+                '\\bpop\\b.*tavi',
+                'post\\s*operatorio.*tavi',
+                'post\\s*implante.*tavi',
+                'colocaci[oó]n.*dispositivo.*tavi',
+                'implante.*v[aá]lvula.*a[oó]rtica.*percut'
+            ]);
+
+            // POP Cirugía Valvular: dropdown "RVAo" / "Otros"
+            // RVAo: reemplazo valvular aórtico
+            // Otros: cualquier otro reemplazo/plástica valvular
+            const hasRVAo = /reemplazo\s+valvular\s+a[oó]rtic|reemplazo.*v[aá]lvula\s+a[oó]rtica|\bRVAo\b|v[aá]lvula\s+a[oó]rtica\s+biol[oó]gica|v[aá]lvula\s+a[oó]rtica\s+mec[aá]nica|pr[oó]tesis\s+a[oó]rtica\s+biol[oó]gica|pr[oó]tesis\s+a[oó]rtica\s+mec[aá]nica/i.test(textoCompleto);
+            const hasCxValvOtro = /reemplazo\s+valvular\s+mitral|reemplazo\s+valvular\s+tric[uú]spide|\bRVM\b|pl[aá]stica\s+mitral|pl[aá]stica\s+tric[uú]spide|mitraclip/i.test(textoCompleto);
+            // POP_Cx_Valvular — FIX v6.3: default 'No' (el dropdown del Sheet ahora tiene 'No')
+            if (hasRVAo) datos.internaciones.POP_Cx_Valvular = 'RVAo';
+            else if (hasCxValvOtro) datos.internaciones.POP_Cx_Valvular = 'Otros';
+            else datos.internaciones.POP_Cx_Valvular = 'No';
+
+            // POP Endoprótesis Aórtica: aneurisma de aorta abdominal postoperatorio
+            datos.internaciones.POP_Endoprotesis_Ao = buscarSiNo(textoCompletoLower, [
+                'endopr[oó]tesis.*aorta',
+                'post\\s*operatorio.*endopr[oó]tesis.*aorta',
+                'colocaci[oó]n.*endopr[oó]tesis.*aorta',
+                'aneurisma.*aorta\\s+abdominal'
+            ]);
+
+            // POP Angioplastía Vascular Periférica — FIX v6 (Tanda 3)
+            // Angioplastías de territorio NO coronario: aortoilíaca, femoropoplítea,
+            // carotídea, renal, mesentérica, etc. Diferente de PCI coronaria.
+            datos.internaciones.POP_Angioplastia_Vascular = buscarSiNo(textoCompletoLower, [
+                'angioplast[ií]a\\s+aortoil[ií]aca',
+                'angioplast[ií]a\\s+il[ií]aca',
+                'angioplast[ií]a\\s+femoropopl[ií]tea',
+                'angioplast[ií]a\\s+(?:de\\s+)?(?:la\\s+)?caroti?d',
+                'angioplast[ií]a\\s+(?:de\\s+)?(?:la\\s+)?renal',
+                'angioplast[ií]a\\s+mesent[eé]rica',
+                'angioplast[ií]a\\s+vascular\\s+perif[eé]rica',
+                'pop\\s+angioplast[ií]a\\s+(?!coronari)'
+            ]);
+
+            // Endocarditis infecciosa — FIX v6 (Tanda 3)
+            // Captura mención de endocarditis en cualquier válvula (nativa o protésica)
+            datos.internaciones.Endocarditis_Inf = buscarSiNo(textoCompletoLower, [
+                'endocarditis\\s+infecc',
+                'endocarditis\\s+(?:bacteriana|aguda|sub\\s*aguda)',
+                'endocarditis\\s+en\\s+v[aá]lvula',
+                '\\bendocarditis\\s+(?:tric[uú]spide|mitral|a[oó]rtica|pulmonar)',
+                'endocarditis.*v[aá]lvula\\s+(?:tric[uú]spide|mitral|a[oó]rtica|pulmonar|nativa|prot[eé]sica)'
+            ]);
+
+            // Disnea en estudio
+            datos.internaciones.Disnea_Estudio = buscarSiNo(textoCompletoLower, [
+                'disnea\\s+en\\s+estudio',
+                'disnea\\s+a\\s+estudiar',
+                'disnea\\s+en\\s+evaluaci[oó]n'
+            ]);
+
+            datos.internaciones.Otro_Dx = '';
+
+            // FIX v4.1: FEVI — tomar el ÚLTIMO valor (eco más cercano al alta)
+            const feviMatches = [...iTexto.matchAll(/FEy?\s*(\d{1,2})\s*%/gi),
+                                 ...iTexto.matchAll(/\(FEy?\s*(\d{1,2})%?\)/gi)];
+            if (feviMatches.length > 0) {
+                const fevi = parseInt(feviMatches[feviMatches.length - 1][1]);  // último
+                datos.internaciones['FEVI_%'] = fevi + '%';
+                if (fevi < 40) datos.internaciones.FEVI_Rango = '<40%';
+                else if (fevi < 50) datos.internaciones.FEVI_Rango = '40-49%';
+                else datos.internaciones.FEVI_Rango = '>=50%';
+            } else {
+                // Change #7: FEVI conservada = >=50% when no numeric FEVI found
+                if (/fsvi\s*conservada|funci[oó]n\s+sist[oó]lica.*conservada/i.test(iTexto)) {
+                    datos.internaciones['FEVI_%'] = '';
+                    datos.internaciones.FEVI_Rango = '>=50%';
+                }
+            }
+
+            // FIX v4.1: TAPSE — tomar el ÚLTIMO valor
+            // FIX v6.3: Disf_VD default 'No' cuando no se detecta TAPSE
+            const tapseMatches = [...iTexto.matchAll(/tapse[:\s]*(\d{1,2})/gi)];
+            if (tapseMatches.length > 0) {
+                const tapse = parseInt(tapseMatches[tapseMatches.length - 1][1]);  // último
+                datos.internaciones.TAPSE = tapse;
+                datos.internaciones.Disf_VD = tapse < 17 ? 'Sí' : 'No';
+            } else {
+                datos.internaciones.Disf_VD = 'No';
+            }
+
+            // Destino — FIX v6.2: dropdown del Sheet (Alta / Óbito / Pase / Derivación)
+            // Parser autoritativo del campo "Tipo de Egreso: <X>" del HC, con fallback
+            // al regex laxo cuando ese campo está ausente (ej. PDF FREIRE).
+            datos.internaciones.Destino = '';
+            const tipoEgresoMatch = texto.match(/Tipo\s+de\s+Egreso[:\s]*([^\n\r]+)/i);
+            if (tipoEgresoMatch) {
+                const te = tipoEgresoMatch[1].trim().toLowerCase();
+                if (/[oó]bito|fallec/i.test(te))               datos.internaciones.Destino = 'Óbito';
+                else if (/derivad/i.test(te))                  datos.internaciones.Destino = 'Derivación';
+                else if (/pase/i.test(te))                     datos.internaciones.Destino = 'Pase';
+                else if (/normal|alta|egreso/i.test(te))       datos.internaciones.Destino = 'Alta';
+            }
+            // Fallback: regex laxo sobre iTexto si no detectamos por campo estructurado
+            if (!datos.internaciones.Destino) {
+                if (/alta m[eé]dica|egreso hospitalario|alta sanatorial/i.test(iTexto)) datos.internaciones.Destino = 'Alta';
+                else if (/[oó]bito|fallec/i.test(iTexto)) datos.internaciones.Destino = 'Óbito';
+                else if (/derivad.*(?:centro|hospital|cl[ií]nica)|derivaci[oó]n\s+a/i.test(iTexto)) datos.internaciones.Destino = 'Derivación';
+                else if (/pase.*servicio/i.test(iTexto)) datos.internaciones.Destino = 'Pase';
+            }
+
+            // Causa_Óbito — FIX v6 (Tanda H2): parser de lista numerada de causas de muerte
+            // Cuando Destino = "Óbito", busca patrón "1- ... 2- ... 3- ..." después de
+            // la primera mención de "óbito" y concatena los textos como causa de muerte.
+            // Ignora códigos CIE-10 (mantiene solo el texto de la causa).
+            datos.internaciones['Causa_Óbito'] = '';
+            if (datos.internaciones.Destino === 'Óbito') {
+                const obitoIdx = iTexto.search(/[oó]bito|fallec/i);
+                if (obitoIdx >= 0) {
+                    const tras = iTexto.substring(obitoIdx);
+                    // Captura ítems de lista anclando al inicio de línea (flag m).
+                    // Permite dígitos en la descripción (ej. "BAV 2°"). El opcional
+                    // [A-Z]\s*\d{1,3} salta el código CIE-10 (ej. "I 469", "I44.2").
+                    const itemRegex = /^\s*\d+\s*[-.–]\s*(?:[A-Z]\s*\d{1,3}(?:[.\s]\d+)?\s+)?([^\n\r]{3,200})/gm;
+                    const causas = [];
+                    let m;
+                    while ((m = itemRegex.exec(tras)) !== null && causas.length < 5) {
+                        const t = m[1].trim().replace(/\s+/g, ' ');
+                        if (t.length > 3) causas.push(t);
+                    }
+                    if (causas.length > 0) {
+                        datos.internaciones['Causa_Óbito'] = causas.join(' | ');
+                    }
+                }
+            }
+
+            // ===== SIGNOS VITALES AL INGRESO =====
+
+            // TA: "TA 120/80", "PA 130/90 mmHg", "presión arterial 140/80"
+            const taMatch = iTexto.match(/(?:TA|PA|presi[oó]n\s+arterial)[:\s]*(\d{2,3}\s*\/\s*\d{2,3})\s*(?:mmHg)?/i);
+            datos.internaciones.TA_Ing = taMatch ? taMatch[1].replace(/\s/g, '') : '';
+
+            // FC: "FC 72", "frecuencia cardíaca 88 lpm", "FC: 90"
+            const fcMatch = iTexto.match(/(?:FC|frecuencia\s+card[ií]aca)[:\s]*(\d{2,3})\s*(?:lpm|lat)?/i);
+            datos.internaciones.FC_Ing = fcMatch ? fcMatch[1] : '';
+
+            // SatO2: "Sat 98%", "SatO2 96%", "saturación 97%"
+            const satMatch = iTexto.match(/(?:SatO2|Sat|saturaci[oó]n)[:\s]*(\d{2,3})\s*%/i);
+            datos.internaciones.SatO2_Ing = satMatch ? satMatch[1] + '%' : '';
+
+            // ===== NYHA =====
+
+            // NYHA al ingreso: "NYHA III", "clase funcional II", "CF III", "NYHA II-III"
+            const nyhaIngMatch = iTexto.match(/(?:NYHA|clase\s+funcional|CF)[:\s]*([IiVv]{1,4}(?:\s*-\s*[IiVv]{1,4})?)/i);
+            datos.internaciones.NYHA_Ing = nyhaIngMatch ? nyhaIngMatch[1].toUpperCase() : '';
+
+            // NYHA al egreso: buscar contexto "al alta" o "al egreso" cerca de NYHA
+            const nyhaEgrMatch = iTexto.match(/(?:al\s+(?:alta|egreso))[:\s,]*(?:NYHA|CF|clase\s+funcional)[:\s]*([IiVv]{1,4}(?:\s*-\s*[IiVv]{1,4})?)/i) ||
+                                 iTexto.match(/(?:NYHA|CF|clase\s+funcional)[:\s]*([IiVv]{1,4}(?:\s*-\s*[IiVv]{1,4})?)\s*(?:al\s+(?:alta|egreso))/i);
+            datos.internaciones.NYHA_Egr = nyhaEgrMatch ? nyhaEgrMatch[1].toUpperCase() : '';
+
+            // PCR intrahospitalario
+            datos.internaciones.PCR_Intra = buscarSiNo(iLower, ['paro cardiorrespiratorio durante', 'pcr intrahospitalari', 'present[oó] un paro', 'pcr durante']);
+
+            // ===== TIEMPOS =====
+
+            const onsetDoorMatch = iTexto.match(/(?:onset.?door|inicio.?puerta)[:\s]*(\d+)\s*(?:min|hs|horas)?/i);
+            datos.internaciones.T_Onset_Door = onsetDoorMatch ? onsetDoorMatch[1] + ' min' : '';
+
+            const doorEcgMatch = iTexto.match(/(?:door.?to.?ecg|puerta.?ecg)[:\s]*(\d+)\s*(?:min)?/i);
+            datos.internaciones.T_Door_ECG = doorEcgMatch ? doorEcgMatch[1] + ' min' : '';
+
+            const doorBalloonMatch = iTexto.match(/(?:puerta.?bal[oó]n|door.?to.?balloon|puerta.?balloon)[:\s]*(\d+)\s*(?:min)?/i);
+            datos.internaciones.T_Door_Balloon = doorBalloonMatch ? doorBalloonMatch[1] + ' min' : '';
+
+            const doorNeedleMatch = iTexto.match(/(?:puerta.?aguja|door.?to.?needle)[:\s]*(\d+)\s*(?:min)?/i);
+            datos.internaciones.T_Door_Needle = doorNeedleMatch ? doorNeedleMatch[1] + ' min' : '';
+
+            // ===== RISK SCORES =====
+
+            const graceMatch = iTexto.match(/GRACE[:\s]*(\d{1,3})/i);
+            datos.internaciones.GRACE_Score = graceMatch ? graceMatch[1] : '';
+
+            const timiMatch = iTexto.match(/TIMI[:\s]*(\d{1,2})/i);
+            datos.internaciones.TIMI_Score = timiMatch ? timiMatch[1] : '';
+
+            const chadMatch = iTexto.match(/CHA2DS2.?VASc[:\s]*(\d{1,2})/i);
+            datos.internaciones['CHA2DS2_VASc'] = chadMatch ? chadMatch[1] : '';
+
+            const hasBledMatch = iTexto.match(/HAS.?BLED[:\s]*(\d{1,2})/i);
+            datos.internaciones.HAS_BLED = hasBledMatch ? hasBledMatch[1] : '';
+
+            // Change #2: CRUSADE Score
+            const crusadeMatch = iTexto.match(/crusade[:\s]*(\d{1,3})/i);
+            datos.internaciones.CRUSADE_Score = crusadeMatch ? crusadeMatch[1] : '';
+
+            // ===== INFECCIONES INTRAHOSPITALARIAS =====
+
+            // Change #6: IAC — only explicit mentions, not negative cultures
+            {
+                let iacDetected = false;
+                if (/\biac\b|infecci[oó]n asociada a cat[eé]ter/i.test(iTexto)) {
+                    iacDetected = true;
+                }
+                // Do NOT match on "cultivo de catéter" alone
+                // If "cultivo.*negativo" appears near "catéter", do NOT mark IAC
+                if (iacDetected && /cultivo.*cat[eé]ter.*negativo|cultivo.*negativo.*cat[eé]ter/i.test(iTexto)) {
+                    iacDetected = false;
+                }
+                datos.internaciones.Inf_IAC = iacDetected ? 'Sí' : 'No';
+            }
+
+            datos.internaciones.Inf_NAV = buscarSiNo(iLower, ['neumon[ií]a asociada a ventilaci[oó]n', '\\bnav\\b']);
+            datos.internaciones.Inf_NAC = buscarSiNo(iLower, ['neumon[ií]a adquirida en la comunidad', '\\bnac\\b', 'neumon[ií]a de la comunidad']);
+            datos.internaciones.Inf_ITU = buscarSiNo(iLower, ['infecci[oó]n.*tracto urinario', '\\bitu\\b', 'infecci[oó]n urinaria']);
+            // Change #5: IPPB — add "pie diabético" pattern
+            datos.internaciones.Inf_IPPB = buscarSiNo(iLower, ['infecci[oó]n de piel y partes blandas', '\\bippb\\b', 'celulitis', 'erisipela', 'pie diab[eé]tico']);
+            datos.internaciones.Inf_Otros = buscarSiNo(iLower, ['intercurre con.*infecci[oó]n', 'foco infeccioso', 'sepsis']);
+
+            // ===== ARRITMIAS ESPECÍFICAS =====
+
+            datos.internaciones.Arr_FAARV = buscarSiNo(iLower, ['fa con alta respuesta', 'faarv', 'fibrilaci[oó]n auricular con alta resp', 'fa de alta respuesta']);
+            datos.internaciones.Arr_FABRV = buscarSiNo(iLower, ['fa con baja respuesta', 'fabrv', 'fibrilaci[oó]n auricular con baja resp', 'fa de baja respuesta']);
+            datos.internaciones.Arr_Flutter = buscarSiNo(iLower, ['flutter auricular', 'aleteo auricular', '\\baa\\b.*alta resp', '\\baa\\b.*baja resp']);
+            datos.internaciones.Arr_TVS = buscarSiNo(iLower, ['taquicardia ventricular.*sostenida', '\\btvs\\b', '\\btvms\\b', 'tv sostenida', 'tv monomorfa sostenida']);
+            datos.internaciones.Arr_TVNS = buscarSiNo(iLower, ['taquicardia ventricular no sostenida', '\\btvns\\b', 'tv no sostenida']);
+            datos.internaciones.Arr_TPS = buscarSiNo(iLower, ['taquicardia parox[ií]stica supraventricular', '\\btps\\b', 'taquicardia supraventricular', '\\btsv\\b']);
+            datos.internaciones.Arr_BAV = buscarSiNo(iLower, ['bloqueo auriculoventricular', 'bloqueo av', '\\bbav\\b']);
+            datos.internaciones.Arr_BS = buscarSiNo(iLower, ['bradicardia sinusal']);
+            datos.internaciones.Arr_ENS = buscarSiNo(iLower, ['enfermedad del nodo sinusal', '\\bens\\b', 'disfunci[oó]n sinusal']);
+            datos.internaciones.Arr_WPW = buscarSiNo(iLower, ['wolff.parkinson.white', '\\bwpw\\b']);
+
+            // ===== DROGAS VASOACTIVAS / INOTRÓPICAS =====
+
+            datos.internaciones.Droga_NAD = buscarSiNo(iLower, ['noradrenalina', 'norepinefrina', '\\bnad\\b']);
+            datos.internaciones.Droga_Adre = buscarSiNo(iLower, ['adrenalina(?!.*nor)', 'epinefrina(?!.*nor)']);
+            datos.internaciones.Droga_Dopa = buscarSiNo(iLower, ['dopamina']);
+            datos.internaciones.Droga_Dobu = buscarSiNo(iLower, ['dobutamina']);
+            datos.internaciones.Droga_Levo = buscarSiNo(iLower, ['levosimendan']);
+            datos.internaciones.Droga_Milri = buscarSiNo(iLower, ['milrinone', 'milrinona']);
+            datos.internaciones.Droga_Iso = buscarSiNo(iLower, ['isoproterenol']);
+
+            // ===== SOPORTE Y DISPOSITIVOS =====
+
+            datos.internaciones.Sop_ARM_IOT = buscarSiNo(iLower, ['arm[:/\\s]iot', 'intubaci[oó]n orotraqueal', '\\biot\\b', 'asistencia respiratoria mec[aá]nica']);
+            datos.internaciones.Sop_ARM_Traqueo = buscarSiNo(iLower, ['traqueostom[ií]a', 'arm.*traqueo']);
+            datos.internaciones.Sop_VNI = buscarSiNo(iLower, ['ventilaci[oó]n no invasiva', '\\bvni\\b', '\\bbipap\\b', '\\bcpap\\b']);
+            datos.internaciones.Sop_BIAC = buscarSiNo(iLower, ['bal[oó]n de contrapulsaci[oó]n', '\\bbiac\\b', 'contrapulsaci[oó]n a[oó]rtic']);
+            datos.internaciones.Sop_BIC_Furo = buscarSiNo(iLower, ['furosemida.*continua', 'bic.*furosemida', 'bomba.*furosemida', 'infusi[oó]n.*furosemida', 'goteo.*furosemida']);
+            datos.internaciones.Sop_Via_Central = buscarSiNo(iLower, ['v[ií]a central', 'cat[eé]ter venoso central', '\\bcvc\\b']);
+            datos.internaciones.Sop_Cook = buscarSiNo(iLower, ['\\bcook\\b', 'introductor']);
+            datos.internaciones.Sop_Sonda = buscarSiNo(iLower, ['sonda vesical', 'sonda foley', 'cateterismo vesical']);
+            datos.internaciones.Sop_TAM = buscarSiNo(iLower, ['tubo de avenamiento', '\\btam\\b', 'drenaje.*mediastin', 'drenaje.*pleural']);
+            datos.internaciones.Sop_MCP_Trans = buscarSiNo(iLower, ['marcapasos? transitorio', 'mcp transitorio', 'marcapasos? transvenoso']);
+            datos.internaciones.Sop_Amiodarona_EV = buscarSiNo(iLower, ['amiodarona.*endovenosa', 'amiodarona.*ev\\b', 'carga de amiodarona', 'amiodarona.*goteo']);
+
+            // ===== NUEVOS CAMPOS ESQUEMA v5 =====
+
+            // Motivos coronarios específicos
+            datos.internaciones.ANOCA = buscarSiNo(iLower, ['\\banoca\\b', 'angina.*no obstructiva']);
+            datos.internaciones.MINOCA = buscarSiNo(iLower, ['\\bminoca\\b', 'infarto.*no obstructiva']);
+            datos.internaciones.INOCA = buscarSiNo(iLower, ['\\binoca\\b', 'isquemia.*no obstructiva']);
+            datos.internaciones.DPE = buscarSiNo(iLower, ['dolor precordial en estudio', '\\bdpe\\b', 'dolor tor[aá]cico en estudio']);
+
+            // IAM por tipos (clasificación universal)
+            datos.internaciones.IAM_Tipo1 = buscarSiNo(iLower, ['iam tipo 1', 'iam.*tipo i\\b', 'iamcest', 'iamsest']);
+            datos.internaciones.IAM_Tipo2 = buscarSiNo(iLower, ['iam tipo 2', 'iam.*tipo ii\\b', 'iam secundario', 'iam.*demanda']);
+            datos.internaciones.IAM_Tipo3a = buscarSiNo(iLower, ['iam tipo 3a', 'iam.*tipo iiia']);
+            datos.internaciones.IAM_Tipo3b = buscarSiNo(iLower, ['iam tipo 3b', 'iam.*tipo iiib']);
+            datos.internaciones.IAM_Tipo3c = buscarSiNo(iLower, ['iam tipo 3c', 'iam.*tipo iiic']);
+            // Change #8: IAM Tipo 4 — detect "IAM IVa", "IAM IVb" without "tipo"
+            datos.internaciones.IAM_Tipo4 = buscarSiNo(iLower, ['iam\\s*(?:tipo\\s*)?(?:4|iv)\\s*[ab]?', 'iam.*relacionado.*(?:atc|stent|cirug)']);
+
+            // TEP estratificado (reemplaza TEP genérico)
+            datos.internaciones.TEP_Alto = buscarSiNo(iLower, ['tep.*alto riesgo', 'tep.*masivo', 'tep.*inestabilidad']);
+            datos.internaciones.TEP_Intermedio_Alto = buscarSiNo(iLower, ['tep.*intermedio alto', 'tep.*riesgo intermedio alto']);
+            datos.internaciones.TEP_Intermedio_Bajo = buscarSiNo(iLower, ['tep.*intermedio bajo', 'tep.*riesgo intermedio bajo']);
+            datos.internaciones.TEP_Bajo = buscarSiNo(iLower, ['tep.*bajo riesgo', 'tep.*riesgo bajo']);
+
+            // TEP Crónico — FIX v6 (Tanda 3): TEP de larga data (no agudo)
+            // Búsqueda en TEXTO COMPLETO porque "TEP crónico" puede aparecer como motivo
+            // (antes del split). EP 7 (PALASCIANO) es el caso típico.
+            datos.internaciones.TEP_Cronico = buscarSiNo(textoCompletoLower, [
+                'tep\\s+cr[oó]nico',
+                'tromboembolismo.*pulmonar.*cr[oó]nico',
+                'hipertensi[oó]n\\s+pulmonar.*tromboemb[oó]lica.*cr[oó]nica',
+                '\\bhptec\\b'
+            ]);
+
+            // Scores PESI / RIETE — FIX v6 (Tanda 3)
+            // PESI: Pulmonary Embolism Severity Index. Formato típico: "PESI 119" o "PESI: 119"
+            // RIETE: Registry of patients with venous thromboembolism. Formato: "RIETE 3"
+            const pesiMatch = iTexto.match(/\bPESI[:\s]*(\d{1,3})/i);
+            datos.internaciones.PESI_Score = pesiMatch ? pesiMatch[1] : '';
+            const rieteMatch = iTexto.match(/\bRIETE[:\s]*(\d{1,2})/i);
+            datos.internaciones.RIETE_Score = rieteMatch ? rieteMatch[1] : '';
+
+            // BAV por grados (reemplaza Arr_BAV genérico)
+            datos.internaciones.BAV_1 = buscarSiNo(iLower, ['bav.*1', 'bav.*primer', 'bloqueo av.*1', 'bloqueo av.*primer']);
+            datos.internaciones.BAV_2M1 = buscarSiNo(iLower, ['bav.*2.*mobitz.*1', 'bav.*2.*m1', 'bav.*segundo.*mobitz.*1', 'wenckebach']);
+            datos.internaciones.BAV_2M2 = buscarSiNo(iLower, ['bav.*2.*mobitz.*2', 'bav.*2.*m2', 'bav.*segundo.*mobitz.*2']);
+            datos.internaciones.BAV_Alto_Grado = buscarSiNo(iLower, ['bav.*alto grado', 'bav.*3', 'bav.*tercer', 'bav.*completo', 'bloqueo av.*completo', 'bloqueo av.*3']);
+
+            // Taquicardia auricular
+            datos.internaciones.Taq_Auricular = buscarSiNo(iLower, ['taquicardia auricular', 'taquicardia atrial']);
+
+            // Urgencia HTA (separada de Crisis_HTA)
+            datos.internaciones.Urgencia_HTA = buscarSiNo(iLower, ['urgencia hipertensiva', 'urgencia hta']);
+            datos.internaciones.Emergencia_HTA = buscarSiNo(iLower, ['emergencia hipertensiva', 'emergencia hta', 'crisis hipertensiva.*da[nñ]o.*[oó]rgano']);
+
+            // NTG (nitroglicerina)
+            datos.internaciones.Droga_NTG = buscarSiNo(iLower, ['nitroglicerina', '\\bntg\\b', 'nitro.*goteo', 'nitro.*endovenosa']);
+            datos.internaciones.Droga_NPS = buscarSiNo(iLower, ['nitroprusiato', '\\bnps\\b']);
+
+            // Arritmias asociadas a MCP
+            datos.internaciones.Arr_Implante_MCP = buscarSiNo(iLower, ['implante.*marcapaso', 'implante.*mcp', 'colocaci[oó]n.*marcapaso']);
+            datos.internaciones.Arr_EOL = buscarSiNo(iLower, ['end of life', '\\beol\\b.*mcp', '\\beol\\b.*marcapaso', 'fin de vida.*marcapaso', 'fin de vida.*generador']);
+            datos.internaciones.Arr_ERI = buscarSiNo(iLower, ['elective replacement', '\\beri\\b.*mcp', '\\beri\\b.*marcapaso', 'indicador.*reemplazo.*electivo']);
+            datos.internaciones.Arr_Otros_MCP = buscarSiNo(iLower, ['disfunci[oó]n.*marcapaso', 'falla.*marcapaso', 'desplazamiento.*cable', 'fractura.*cable', 'infecci[oó]n.*marcapaso', 'infecci[oó]n.*generador']);
+
+            // MCP_Tipo — FIX v6.1: alineado con dropdown MCP de Pacientes (No / DDD / VVI / Otro)
+            // Busca en TEXTO COMPLETO porque "Implante MCP DDD-R" puede aparecer en motivo
+            // (antes del split). Si no hay implante mencionado, queda 'No'.
+            datos.internaciones.MCP_Tipo = 'No';
+            if (datos.internaciones.Arr_Implante_MCP === 'Sí' ||
+                /(?:implante|recambio|colocaci[oó]n).*?(?:marcapaso|mcp)/i.test(textoCompleto)) {
+                if (/dddr|\bddd\s*[-]?\s*r\b|\bddd\b/i.test(textoCompleto)) {
+                    datos.internaciones.MCP_Tipo = 'DDD';
+                } else if (/\bVVI\b/i.test(textoCompleto)) {
+                    datos.internaciones.MCP_Tipo = 'VVI';
+                } else {
+                    datos.internaciones.MCP_Tipo = 'Otro';
+                }
+            }
+
+            // ========== PROCEDIMIENTOS (14 cols) — Múltiples procedimientos ==========
+            datos.procedimientos_extra = [];
+
+            function crearProc(tipo, extras) {
+                const p = {
+                    ID_Proc: '', ID_Intern: idInternacion, Fecha: '', Tipo: tipo,
+                    Territorio: '', Vaso: '', N_Stents: '', Tipo_Stent: '',
+                    'Vía': '', 'Éxito': '', 'Complicación': '', Sangrado: '',
+                    Hematoma: '', Reinterv: ''
+                };
+                Object.assign(p, extras || {});
+                return p;
+            }
+
+            let procList = [];
+
+            // CCG diagnóstica
+            if (/ccg|cinecoronariograf/i.test(iTexto)) {
+                const pCcg = crearProc('CCG SLAS');
+                if (/femoral/i.test(iTexto)) pCcg['Vía'] = 'Femoral';
+                else if (/radial/i.test(iTexto)) pCcg['Vía'] = 'Radial';
+                procList.push(pCcg);
+            }
+
+            // Change #3: Multiple ATCs by text segmentation
+            {
+                // Split text into segments at date markers: "El dd/mm"
+                const dateSegmentRegex = /El\s+\d{1,2}\/\d{1,2}/;
+                const segments = iTexto.split(dateSegmentRegex);
+                let atcFound = false;
+
+                for (let si = 0; si < segments.length; si++) {
+                    const seg = segments[si];
+                    const segLower = seg.toLowerCase();
+
+                    // Check for ATC in this segment (but NOT "atc previa" and NOT "atp")
+                    const hasAtc = (/angioplast[ií]a|\batc\b/i.test(seg)) &&
+                                   !(/atc previa/i.test(seg)) &&
+                                   !(/\batp\b/i.test(seg));
+
+                    if (hasAtc) {
+                        atcFound = true;
+                        const pAtc = crearProc('ATC');
+
+                        // Limpiar "Resto de anatomía: ..." para no confundir vasos NO tratados
+                        const segClean = seg.replace(/\(?\s*[Rr]esto de anatom[ií]a.*?\)/gi, '');
+
+                        // Extract territory from cleaned segment (sin resto de anatomía)
+                        if (/circunfleja|\bcx\b/i.test(segClean)) pAtc.Territorio = 'Cx';
+                        else if (/descendente anterior|\bda\b/i.test(segClean)) pAtc.Territorio = 'DA';
+                        else if (/coronaria derecha|\bcd\b/i.test(segClean)) pAtc.Territorio = 'CD';
+                        else if (/tronco|\btci\b/i.test(segClean)) pAtc.Territorio = 'TCI';
+                        else if (/descendente posterior|\bdp\b/i.test(segClean)) pAtc.Territorio = 'DP';
+                        else if (/posteroventricular|\bpv\b/i.test(segClean)) pAtc.Territorio = 'PV';
+
+                        // Extract stent count and type from cleaned segment
+                        const stentMatch = segClean.match(/(\d+)\s*(?:stent|DES|BMS|DEB)/i) ||
+                                           segClean.match(/con\s*(\d+)\s*(?:stent|DES|BMS|DEB)/i);
+                        pAtc.N_Stents = stentMatch ? parseInt(stentMatch[1]) : '';
+
+                        if (/\bDES\b|drug[.\s-]?eluting|liberador/i.test(segClean)) pAtc.Tipo_Stent = 'DES';
+                        else if (/\bBMS\b|bare[.\s-]?metal/i.test(segClean)) pAtc.Tipo_Stent = 'BMS';
+                        else if (/\bDEB\b|drug[.\s-]?eluting.*balloon/i.test(segClean)) pAtc.Tipo_Stent = 'DEB';
+                        else if (stentMatch) pAtc.Tipo_Stent = 'DES';
+
+                        // Extract vía from THIS segment
+                        if (/femoral/i.test(seg)) pAtc['Vía'] = 'Femoral';
+                        else if (/radial/i.test(seg)) pAtc['Vía'] = 'Radial';
+
+                        pAtc['Éxito'] = buscarSiNo(segLower, ['[eé]xito', 'exitoso', 'satisfactori']);
+                        pAtc['Complicación'] = buscarSiNo(segLower, ['complicaci[oó]n']);
+                        pAtc.Sangrado = buscarSiNo(segLower, ['sangrado', 'hemorragia']);
+                        pAtc.Hematoma = buscarSiNo(segLower, ['hematoma']);
+                        pAtc.Reinterv = buscarSiNo(segLower, ['reintervenci[oó]n']);
+                        procList.push(pAtc);
+                    }
+                }
+
+                // Fallback: if no date segments found but text globally mentions ATC
+                if (!atcFound && /angioplast[ií]a|\batc\b/i.test(iTexto) && !/atc previa/i.test(iTexto) && !/\batp\b/i.test(iTexto)) {
+                    const pAtc = crearProc('ATC');
+                    const iTextoClean = iTexto.replace(/\(?\s*[Rr]esto de anatom[ií]a.*?\)/gi, '');
+                    if (/circunfleja|\bcx\b/i.test(iTextoClean)) pAtc.Territorio = 'Cx';
+                    else if (/descendente anterior|\bda\b/i.test(iTextoClean)) pAtc.Territorio = 'DA';
+                    else if (/coronaria derecha|\bcd\b/i.test(iTextoClean)) pAtc.Territorio = 'CD';
+                    else if (/tronco|\btci\b/i.test(iTextoClean)) pAtc.Territorio = 'TCI';
+                    else if (/descendente posterior|\bdp\b/i.test(iTextoClean)) pAtc.Territorio = 'DP';
+                    else if (/posteroventricular|\bpv\b/i.test(iTextoClean)) pAtc.Territorio = 'PV';
+
+                    const stentMatch = iTexto.match(/(\d+)\s*(?:stent|DES|BMS)/i) ||
+                                       iTexto.match(/con\s*(\d+)\s*(?:stent|DES|BMS)/i);
+                    pAtc.N_Stents = stentMatch ? parseInt(stentMatch[1]) : '';
+
+                    if (/\bDES\b|drug[.\s-]?eluting|liberador/i.test(iTexto)) pAtc.Tipo_Stent = 'DES';
+                    else if (/\bBMS\b|bare[.\s-]?metal/i.test(iTexto)) pAtc.Tipo_Stent = 'BMS';
+                    else if (stentMatch) pAtc.Tipo_Stent = 'DES';
+
+                    if (/femoral/i.test(iTexto)) pAtc['Vía'] = 'Femoral';
+                    else if (/radial/i.test(iTexto)) pAtc['Vía'] = 'Radial';
+
+                    pAtc['Éxito'] = buscarSiNo(iLower, ['[eé]xito', 'exitoso', 'satisfactori']);
+                    pAtc['Complicación'] = buscarSiNo(iLower, ['complicaci[oó]n']);
+                    pAtc.Sangrado = buscarSiNo(iLower, ['sangrado', 'hemorragia']);
+                    pAtc.Hematoma = buscarSiNo(iLower, ['hematoma']);
+                    pAtc.Reinterv = buscarSiNo(iLower, ['reintervenci[oó]n']);
+                    procList.push(pAtc);
+                }
+            }
+
+            // Change #4: ATP periférica as procedure type
+            if (/angioplastia\s*perif[eé]rica|\batp\b/i.test(iTexto)) {
+                const pAtp = crearProc('ATP');
+                // Extract territory if mentioned
+                if (/tibial\s*anterior/i.test(iTexto)) pAtp.Territorio = 'Tibial Anterior';
+                else if (/tibial\s*posterior/i.test(iTexto)) pAtp.Territorio = 'Tibial Posterior';
+                else if (/femoral/i.test(iTexto)) pAtp.Territorio = 'Femoral';
+                else if (/il[ií]aca/i.test(iTexto)) pAtp.Territorio = 'Ilíaca';
+                pAtp['Éxito'] = buscarSiNo(iLower, ['[eé]xito', 'exitoso', 'satisfactori']);
+                pAtp['Complicación'] = buscarSiNo(iLower, ['complicaci[oó]n']);
+                pAtp.Sangrado = buscarSiNo(iLower, ['sangrado', 'hemorragia']);
+                pAtp.Hematoma = buscarSiNo(iLower, ['hematoma']);
+                procList.push(pAtp);
+            }
+
+            // Implante CDI
+            if (/implante.*cdi|colocaci[oó]n.*cdi|cdi.*exitoso|implante de cardiodesfibrilador/i.test(iTexto)) {
+                const pCdi = crearProc('Implante CDI');
+                pCdi['Éxito'] = buscarSiNo(iLower, ['exitoso', '[eé]xito']);
+                pCdi['Complicación'] = buscarSiNo(iLower, ['complicaci[oó]n']);
+                procList.push(pCdi);
+            }
+
+            // Implante MCP (nuevo, no recambio)
+            if (/implante.*(?:mcp|marcapaso)|colocaci[oó]n.*(?:mcp|marcapaso)/i.test(iTexto) && !/mcp transitorio/i.test(iTexto) && !/recambio/i.test(iTexto)) {
+                const pMcp = crearProc('Implante MCP');
+                pMcp['Éxito'] = buscarSiNo(iLower, ['exitoso', '[eé]xito']);
+                procList.push(pMcp);
+            }
+
+            // Recambio MCP (generador y/o cables)
+            if (/recambio.*(?:mcp|marcapaso|generador)|cambio.*generador/i.test(iTexto)) {
+                const pRec = crearProc('Recambio MCP');
+                pRec['Éxito'] = buscarSiNo(iLower, ['exitoso', '[eé]xito']);
+                procList.push(pRec);
+            }
+
+            // CVE (cardioversión eléctrica)
+            if (/cardioversi[oó]n el[eé]ctrica|\bcve\b/i.test(iTexto)) {
+                const pCve = crearProc('CVE');
+                pCve['Éxito'] = /reversi[oó]n a ritmo sinusal|exitoso|[eé]xito/i.test(iTexto) ? 'Sí' : '';
+                procList.push(pCve);
+            }
+
+            // TAVI
+            if (/\btavi\b|implante.*valvular.*a[oó]rtic/i.test(iTexto) && !/tavi previa/i.test(iTexto)) {
+                procList.push(crearProc('TAVI'));
+            }
+
+            // Ablación
+            if (/ablaci[oó]n/i.test(iTexto)) {
+                procList.push(crearProc('Ablación'));
+            }
+
+            // Auto-generar ID_Proc: {ID_Intern}_P1, _P2, etc.
+            for (let p = 0; p < procList.length; p++) {
+                procList[p].ID_Proc = idInternacion ? (idInternacion + '_P' + (p + 1)) : ('P' + (p + 1));
+            }
+            if (procList.length > 0) {
+                datos.procedimientos = procList[0];
+                datos.procedimientos_extra = procList.slice(1);
+                datos.procedimientos_all = procList;
+            } else {
+                datos.procedimientos = crearProc('');
+                datos.procedimientos_extra = [];
+                datos.procedimientos_all = [];
+            }
+
+            // ========== LABORATORIO (16 cols) ==========
+            datos.laboratorio.ID_Intern = idInternacion;
+            datos.laboratorio.Momento = 'Ingreso';
+
+            const labPatterns = {
+                Troponina: /troponina[:\s]*([0-9.,]+)/i,
+                NT_proBNP: /(?:nt-?\s*)?pro\s*bnp[:\s]*([0-9.,]+)/i,
+                Hb: /\bhb[:\s]*([0-9.,]+)/i,
+                Hto: /\bhto[:\s]*([0-9.,]+)/i,
+                Urea: /\bur(?:ea)?\b[:\s]*([0-9.,]+)/i,
+                Creat: /\bcr(?:ea(?:tinina)?)?\b[:\s]*([0-9.,]+)/i,
+                CT: /colesterol\s*total[:\s]*([0-9.,]+)/i,
+                LDL: /\bldl[:\s]*([0-9.,]+)/i,
+                HDL: /\bhdl[:\s]*([0-9.,]+)/i,
+                TG: /triglic[eé]ridos?[:\s]*([0-9.,]+)/i,
+                Glucemia: /\bglu(?:cemia|cosa)?\b[:\s]*([0-9.,]+)/i,
+                HbA1c: /hba1c[:\s]*([0-9.,]+)/i,
+                Na: /\bna[:\s]*([0-9.,]+)(?!\s*%)/i,
+                K: /\bk[:\s]*([0-9.,]+)(?!\s*%)/i
+            };
+            for (const [campo, regex] of Object.entries(labPatterns)) {
+                const match = texto.match(regex);
+                if (match) datos.laboratorio[campo] = match[1].replace(',', '.');
+            }
+
+            // Change #9: TAG as alternative pattern for TG
+            if (!datos.laboratorio.TG) {
+                const tagMatch = texto.match(/TAG[:\s]*([0-9.,]+)/i);
+                if (tagMatch) datos.laboratorio.TG = tagMatch[1].replace(',', '.');
+            }
+
+            // ========== MEDICACIÓN (35 cols) ==========
+            // Extraer medicación al egreso (texto completo)
+            datos.medicacion = extraerMedicacionDesdeTexto(texto, idInternacion, 'Egreso');
+
+            // ===== Medicación previa =====
+            const seccionPrevia = extraerSeccionPrevia(texto);
+            if (seccionPrevia) {
+                datosMedPrevia = extraerMedicacionDesdeTexto(seccionPrevia, idInternacion, 'Previo');
+                document.getElementById('btnMedPrevia').style.display = 'inline-block';
+            } else {
+                document.getElementById('btnMedPrevia').style.display = 'none';
+            }
+
+            // ========== SEGUIMIENTO (17 cols) - estructura vacía ==========
+            datos.seguimiento.ID_Seguim = '';
+            datos.seguimiento.ID_Intern = idInternacion;
+            datos.seguimiento.Fecha_Contacto = '';
+            datos.seguimiento.Ventana = '';
+            datos.seguimiento.Vivo = '';
+            datos.seguimiento.Causa_Muerte = '';
+            datos.seguimiento.Reingreso_CV = '';
+            datos.seguimiento.Reingreso_IC = '';
+            datos.seguimiento.Reinfarto = '';
+            datos.seguimiento.Re_ATC = '';
+            datos.seguimiento.ACV_Post = '';
+            datos.seguimiento.MACE = '';
+            datos.seguimiento.NYHA_Actual = '';
+            datos.seguimiento.Control_Cardio = '';
+            datos.seguimiento.Adherencia = '';
+            datos.seguimiento.FEY_Control = '';
+            datos.seguimiento.Notas = '';
+
+            mostrarResultados();
+        }
+
+        // =====================================================
+        // MOSTRAR RESULTADOS
+        // =====================================================
+
+        function mostrarResultados() {
+            document.getElementById('statsBar').style.display = 'flex';
+
+            const countPac = Object.values(datos.pacientes).filter(v => v && v !== 'No' && v !== '' && v !== 'Nunca').length;
+            const countInt = Object.values(datos.internaciones).filter(v => v && v !== 'No' && v !== '').length;
+            const countProc = (datos.procedimientos_all || []).length;
+            const countLab = Object.values(datos.laboratorio).filter(v => v && v !== '' && v !== 'Ingreso').length;
+            const countMed = Object.values(datos.medicacion).filter(v => v === 'Sí').length;
+            const countSeg = Object.values(datos.seguimiento).filter(v => v && v !== '').length;
+
+            document.getElementById('statPac').textContent = countPac;
+            document.getElementById('statInt').textContent = countInt;
+            document.getElementById('statProc').textContent = countProc;
+            document.getElementById('statLab').textContent = countLab;
+            document.getElementById('statMed').textContent = countMed;
+            document.getElementById('statSeg').textContent = countSeg;
+
+            document.getElementById('countPac').textContent = countPac;
+            document.getElementById('countInt').textContent = countInt;
+            document.getElementById('countProc').textContent = countProc;
+            document.getElementById('countLab').textContent = countLab;
+            document.getElementById('countMed').textContent = countMed;
+            document.getElementById('countSeg').textContent = countSeg;
+
+            renderTable('tablePacientes', datos.pacientes, COL_PACIENTES);
+            renderTable('tableInternaciones', datos.internaciones, COL_INTERNACIONES);
+            renderTableMulti('tableProcedimientos', datos.procedimientos_all || [datos.procedimientos], COL_PROCEDIMIENTOS);
+            renderTable('tableLaboratorio', datos.laboratorio, COL_LABORATORIO);
+            renderTable('tableMedicacion', datos.medicacion, COL_MEDICACION);
+            renderTable('tableSeguimiento', datos.seguimiento, COL_SEGUIMIENTO);
+
+            document.getElementById('orderPac').innerHTML = '<b>Orden:</b> ' + COL_PACIENTES.join(' &rarr; ');
+            document.getElementById('orderInt').innerHTML = '<b>Orden:</b> ' + COL_INTERNACIONES.join(' &rarr; ');
+            document.getElementById('orderProc').innerHTML = '<b>Orden:</b> ' + COL_PROCEDIMIENTOS.join(' &rarr; ');
+            document.getElementById('orderLab').innerHTML = '<b>Orden:</b> ' + COL_LABORATORIO.join(' &rarr; ');
+            document.getElementById('orderMed').innerHTML = '<b>Orden:</b> ' + COL_MEDICACION.join(' &rarr; ');
+            document.getElementById('orderSeg').innerHTML = '<b>Orden:</b> ' + COL_SEGUIMIENTO.join(' &rarr; ');
+
+            let alertMsg = '&#x2705; Extracci&oacute;n completada. Revis&aacute; cada pesta&ntilde;a y copi&aacute; las filas.';
+            if (datosMedPrevia) {
+                alertMsg += ' &#x1F4CA; Se detect&oacute; medicaci&oacute;n previa (2 filas de medicaci&oacute;n disponibles).';
+            }
+            document.getElementById('alertBox').innerHTML = '<div class="alert alert-success">' + alertMsg + '</div>';
+        }
+
+        // =====================================================
+        // RENDER: tabla simple (1 fila de datos)
+        // =====================================================
+
+        function renderTable(tableId, data, columns) {
+            const table = document.getElementById(tableId);
+            let html = '<thead><tr><th>#</th><th>Campo</th><th>Valor</th></tr></thead><tbody>';
+
+            for (let i = 0; i < columns.length; i++) {
+                const col = columns[i];
+                const value = data[col] !== undefined ? data[col] : '';
+
+                let valueClass = '';
+                if (value === 'Sí') valueClass = 'value-si';
+                else if (value === 'No') valueClass = 'value-no';
+                else if (typeof value === 'number') valueClass = 'value-num';
+                else if (value !== '') valueClass = 'value-text';
+
+                html += `<tr><td style="color:#666">${i+1}</td><td>${col}</td><td class="${valueClass}">${value}</td></tr>`;
+            }
+            html += '</tbody>';
+            table.innerHTML = html;
+        }
+
+        // =====================================================
+        // RENDER: tabla multi (procedimientos lado a lado)
+        // =====================================================
+
+        function renderTableMulti(tableId, dataArray, columns) {
+            const table = document.getElementById(tableId);
+            if (!dataArray || dataArray.length === 0) {
+                table.innerHTML = '<tbody><tr><td colspan="3" style="color:#666;text-align:center">Sin procedimientos detectados</td></tr></tbody>';
+                return;
+            }
+            let html = '<thead><tr><th>#</th><th>Campo</th>';
+            for (let p = 0; p < dataArray.length; p++) {
+                html += `<th style="color:#ffd93d">Proc ${p+1}: ${dataArray[p].Tipo || '?'}</th>`;
+            }
+            html += '</tr></thead><tbody>';
+
+            for (let i = 0; i < columns.length; i++) {
+                const col = columns[i];
+                html += `<tr><td style="color:#666">${i+1}</td><td>${col}</td>`;
+                for (let p = 0; p < dataArray.length; p++) {
+                    const value = dataArray[p][col] !== undefined ? dataArray[p][col] : '';
+                    let valueClass = '';
+                    if (value === 'Sí') valueClass = 'value-si';
+                    else if (value === 'No') valueClass = 'value-no';
+                    else if (typeof value === 'number') valueClass = 'value-num';
+                    else if (value !== '') valueClass = 'value-text';
+                    html += `<td class="${valueClass}">${value}</td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</tbody>';
+            table.innerHTML = html;
+        }
+
+        // =====================================================
+        // COPIAR: genérica por hoja
+        // =====================================================
+
+        function copiarHoja(hoja) {
+            let columns, dataObj;
+            switch(hoja) {
+                case 'pacientes': columns = COL_PACIENTES; dataObj = datos.pacientes; break;
+                case 'internaciones': columns = COL_INTERNACIONES; dataObj = datos.internaciones; break;
+                case 'procedimientos':
+                    // Copiar TODAS las filas de procedimientos (separadas por \n)
+                    columns = COL_PROCEDIMIENTOS;
+                    const allProcs = datos.procedimientos_all || [datos.procedimientos];
+                    const filas = allProcs.map(p =>
+                        columns.map(col => (p[col] === undefined || p[col] === null) ? '' : p[col]).join('\t')
+                    ).join('\n');
+                    navigator.clipboard.writeText(filas).then(() => {
+                        document.getElementById('alertBox').innerHTML =
+                            `<div class="alert alert-info">&#x1F4CB; ${allProcs.length} procedimiento(s) copiados (${columns.length} cols c/u). Peg&aacute; en la hoja Procedimientos &mdash; se crean ${allProcs.length} fila(s).</div>`;
+                    });
+                    return;
+                case 'laboratorio': columns = COL_LABORATORIO; dataObj = datos.laboratorio; break;
+                case 'medicacion': columns = COL_MEDICACION; dataObj = datos.medicacion; break;
+                case 'seguimiento': columns = COL_SEGUIMIENTO; dataObj = datos.seguimiento; break;
+            }
+
+            const fila = columns.map(col => {
+                const val = dataObj[col];
+                return (val === undefined || val === null) ? '' : val;
+            }).join('\t');
+
+            navigator.clipboard.writeText(fila).then(() => {
+                document.getElementById('alertBox').innerHTML = `<div class="alert alert-info">&#x1F4CB; Fila "${hoja}" copiada (${columns.length} cols). Peg&aacute; en Excel con Ctrl+V</div>`;
+            });
+        }
+
+        // =====================================================
+        // COPIAR: Internaciones en 2 partes (no pisar fórmulas de Días)
+        // =====================================================
+
+        // Parte 1: Columnas A-D (IDs + Fechas)
+        function copiarInternacionesParte1() {
+            const columnasParte1 = ['ID_Intern', 'ID_Paciente', 'Fecha_Ing', 'Fecha_Egr'];
+            const fila = columnasParte1.map(col => {
+                const val = datos.internaciones[col];
+                return (val === undefined || val === null) ? '' : val;
+            }).join('\t');
+
+            navigator.clipboard.writeText(fila).then(() => {
+                document.getElementById('alertBox').innerHTML = `<div class="alert alert-info">&#x1F4CB; Parte 1 copiada (A-D: ${columnasParte1.length} cols). Position&aacute; en celda A y peg&aacute;. Luego copi&aacute; Parte 2.</div>`;
+            });
+        }
+
+        // Parte 2: Columna I en adelante (Programado hasta el final) — salta E-H (fórmulas de Días)
+        function copiarInternacionesParte2() {
+            const columnasParte2 = COL_INTERNACIONES.slice(8); // Desde índice 8 (Programado) hasta el final
+            const fila = columnasParte2.map(col => {
+                const val = datos.internaciones[col];
+                return (val === undefined || val === null) ? '' : val;
+            }).join('\t');
+
+            navigator.clipboard.writeText(fila).then(() => {
+                document.getElementById('alertBox').innerHTML = `<div class="alert alert-info">&#x1F4CB; Parte 2 copiada (col I en adelante, ${columnasParte2.length} cols). Position&aacute; en celda I (columna 9) y peg&aacute;.</div>`;
+            });
+        }
+
+        // =====================================================
+        // COPIAR: Medicación previa (segunda fila)
+        // =====================================================
+
+        function copiarMedicacionPrevia() {
+            if (!datosMedPrevia) {
+                document.getElementById('alertBox').innerHTML = '<div class="alert alert-info">No se detect&oacute; secci&oacute;n de medicaci&oacute;n previa en el epicrisis.</div>';
+                return;
+            }
+            const fila = COL_MEDICACION.map(col => {
+                const val = datosMedPrevia[col];
+                return (val === undefined || val === null) ? '' : val;
+            }).join('\t');
+
+            navigator.clipboard.writeText(fila).then(() => {
+                document.getElementById('alertBox').innerHTML = `<div class="alert alert-info">&#x1F4CB; Fila "Medicaci&oacute;n Previa" copiada (${COL_MEDICACION.length} cols). Peg&aacute; en la siguiente fila de la hoja Medicaci&oacute;n.</div>`;
+            });
+        }
+
+        // =====================================================
+        // LIMPIAR
+        // =====================================================
+
+        function limpiar() {
+            document.getElementById('inputText').value = '';
+            document.getElementById('dniPaciente').value = '';
+            document.getElementById('idInternacion').value = '';
+            document.getElementById('statsBar').style.display = 'none';
+            document.getElementById('alertBox').innerHTML = '';
+            document.getElementById('btnMedPrevia').style.display = 'none';
+            ['tablePacientes', 'tableInternaciones', 'tableProcedimientos', 'tableLaboratorio', 'tableMedicacion', 'tableSeguimiento'].forEach(id => document.getElementById(id).innerHTML = '');
+            ['orderPac', 'orderInt', 'orderProc', 'orderLab', 'orderMed', 'orderSeg'].forEach(id => document.getElementById(id).innerHTML = '');
+            datos = { pacientes: {}, internaciones: {}, procedimientos: {}, laboratorio: {}, medicacion: {}, seguimiento: {} };
+            datosMedPrevia = null;
+        }
+    </script>
+</body>
+</html>
