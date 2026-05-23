@@ -219,7 +219,7 @@
 <body>
     <div class="container">
         <h1>&#x1FAC0; Extractor UCO v4</h1>
-        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 51 | Internaciones 108 | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 17) &mdash; <b>v4.1 split fix</b></p>
+        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 52 | Internaciones 115 | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 17) &mdash; <b>v4.2 ID_Intern en Pacientes</b></p>
 
         <div class="main-layout">
             <div class="panel">
@@ -296,7 +296,7 @@ El extractor detecta autom&aacute;ticamente:
                         <div class="table-container"><table class="data-table" id="tablePacientes"></table></div>
                         <div class="col-order" id="orderPac"></div>
                         <div class="copy-row">
-                            <span>Copiar fila &rarr; Hoja "Pacientes" (50 cols)</span>
+                            <span>Copiar fila &rarr; Hoja "Pacientes" (52 cols)</span>
                             <button class="btn btn-success btn-small" onclick="copiarHoja('pacientes')">&#x1F4CB; Copiar</button>
                         </div>
                     </div>
@@ -359,6 +359,7 @@ El extractor detecta autom&aacute;ticamente:
         // =====================================================
 
         const COL_PACIENTES = [
+            'ID_Intern',
             'DNI_Paciente', 'Apellido', 'Nombre', 'Fecha_Nac', 'Edad', 'Sexo', 'Teléfono', 'Obra_Social',
             'HTA', 'DLP', 'DBT', 'Tipo_DBT', 'TBQ', 'Paq_Año', 'Obesidad', 'Sobrepeso', 'AHF',
             'ERC', 'Diálisis', 'EPOC', 'SAHOS', 'Hipotir', 'Anemia', 'Hepatop',
@@ -367,7 +368,7 @@ El extractor detecta autom&aacute;ticamente:
             'Flutter_Previo', 'TVS_Previa', 'TVNS_Previa', 'TPS_Previa',
             'BAV_Previo', 'WPW_Previo', 'BS_Previa', 'ENS_Previa', 'EI_Previa',
             'EAo_Sev', 'EAo_Mod', 'IM_Mod_Sev', 'IT_Mod_Sev', 'IP_Mod_Sev'
-        ]; // 51 cols
+        ]; // 52 cols — ID_Intern liga Pacientes 1:1 con Internaciones (snapshot por internación)
 
         const COL_INTERNACIONES = [
             'ID_Intern', 'ID_Paciente', 'Fecha_Ing', 'Fecha_Egr', 'Días_UCO', 'Dias_RCV', 'Días_Piso',
@@ -833,6 +834,7 @@ El extractor detecta autom&aacute;ticamente:
                 if (dniMatch) dniPaciente = dniMatch[1];
             }
 
+            datos.pacientes.ID_Intern = idInternacion;
             datos.pacientes.DNI_Paciente = dniPaciente;
             datos.pacientes.Apellido = apellido;
             datos.pacientes.Nombre = nombre;
