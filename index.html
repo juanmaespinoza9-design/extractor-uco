@@ -219,7 +219,7 @@
 <body>
     <div class="container">
         <h1>&#x1FAC0; Extractor UCO v4</h1>
-        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 52 | Internaciones 115 | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 17) &mdash; <b>v4.3 split fix Freire</b></p>
+        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 52 | Internaciones 115 | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 17) &mdash; <b>v4.4 fix Territorio (resto de anatomía con \n)</b></p>
 
         <div class="main-layout">
             <div class="panel">
@@ -1487,8 +1487,10 @@ El extractor detecta autom&aacute;ticamente:
                         atcFound = true;
                         const pAtc = crearProc('ATC');
 
-                        // Limpiar "Resto de anatomía: ..." para no confundir vasos NO tratados
-                        const segClean = seg.replace(/\(?\s*[Rr]esto de anatom[ií]a.*?\)/gi, '');
+                        // Limpiar "Resto de anatomía: ..." para no confundir vasos NO tratados.
+                        // FIX iter 25: usar [\s\S]*? en vez de .*? porque pdf.js inserta
+                        // newlines dentro del paréntesis y . no cruza saltos de línea.
+                        const segClean = seg.replace(/\(?\s*[Rr]esto de anatom[ií]a[\s\S]*?\)/gi, '');
 
                         // Extract territory from cleaned segment (sin resto de anatomía)
                         if (/circunfleja|\bcx\b/i.test(segClean)) pAtc.Territorio = 'Cx';
@@ -1524,7 +1526,8 @@ El extractor detecta autom&aacute;ticamente:
                 // Fallback: if no date segments found but text globally mentions ATC
                 if (!atcFound && /angioplast[ií]a|\batc\b/i.test(iTexto) && !/atc previa/i.test(iTexto) && !/\batp\b/i.test(iTexto)) {
                     const pAtc = crearProc('ATC');
-                    const iTextoClean = iTexto.replace(/\(?\s*[Rr]esto de anatom[ií]a.*?\)/gi, '');
+                    // FIX iter 25: [\s\S]*? cruza newlines (pdf.js corta el paréntesis con \n)
+                    const iTextoClean = iTexto.replace(/\(?\s*[Rr]esto de anatom[ií]a[\s\S]*?\)/gi, '');
                     if (/circunfleja|\bcx\b/i.test(iTextoClean)) pAtc.Territorio = 'Cx';
                     else if (/descendente anterior|\bda\b/i.test(iTextoClean)) pAtc.Territorio = 'DA';
                     else if (/coronaria derecha|\bcd\b/i.test(iTextoClean)) pAtc.Territorio = 'CD';
