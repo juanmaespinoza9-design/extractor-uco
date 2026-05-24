@@ -219,7 +219,7 @@
 <body>
     <div class="container">
         <h1>&#x1FAC0; Extractor UCO v4</h1>
-        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 52 | Internaciones 115 | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 17) &mdash; <b>v4.2 ID_Intern en Pacientes</b></p>
+        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 52 | Internaciones 115 | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 17) &mdash; <b>v4.3 split fix Freire</b></p>
 
         <div class="main-layout">
             <div class="panel">
@@ -667,17 +667,33 @@ El extractor detecta autom&aacute;ticamente:
             // pasadas se trataba como internación actual (3-4 procedimientos falsos +
             // ATC_Previa = "No").
             //
-            // Estrategia nueva (en orden de prioridad):
-            //   1. Header "Evolución / Complicaciones:" — ancla explícita del HC en
-            //      Formato F. Cuando existe, la narrativa actual empieza después.
-            //   2. Fallback a patrones legacy, pero saltando matches precedidos por
-            //      "En MM/YY" o "En MM/YYYY" (heurística anti-mención-histórica).
+            // FIX bug FREIRE (iter 25): epicrisis sin "Evolución / Complicaciones:" y
+            // sin "Cursó internación por" caían sin ancla → iTexto = todo el texto →
+            // la cinecoronariografía y angioplastia históricas (en 09/19) se contaban
+            // como procedimientos actuales. Agregada Priority 1.5: header "Evolución:"
+            // simple (con dos puntos y contenido), específico del Formato F2.
+            //
+            // Estrategia (en orden de prioridad):
+            //   1.   Header "Evolución / Complicaciones:" — ancla explícita del HC en
+            //        Formato F. Cuando existe, la narrativa actual empieza después.
+            //   1.5  Header "Evolución:" simple (Formato F2 — Freire-like). Exige
+            //        contenido seguido para no matchear el sub-header "Evolución" solo.
+            //   2.   Fallback a patrones legacy, pero saltando matches precedidos por
+            //        "En MM/YY" o "En MM/YYYY" (heurística anti-mención-histórica).
             let splitIdx = -1;
 
             // Priority 1: header explícito del HC (Formato F)
             const mEvol = texto.match(/Evoluci[oó]n\s*\/\s*Complicaci[oó]nes?\s*:/i);
             if (mEvol) {
                 splitIdx = mEvol.index;
+            }
+
+            // Priority 1.5: header "Evolución:" simple (Formato F2 — Freire-like).
+            // El "\s*\S" final exige contenido seguido — así el sub-header "Evolución"
+            // sin dos puntos (o con ":" pero sin texto después) NO matchea.
+            if (splitIdx === -1) {
+                const mEvolS = texto.match(/\bEvoluci[oó]n\s*:\s*\S/i);
+                if (mEvolS) splitIdx = mEvolS.index;
             }
 
             // Priority 2: patrones legacy con guard anti-mención-histórica
