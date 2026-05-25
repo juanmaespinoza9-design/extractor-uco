@@ -219,7 +219,7 @@
 <body>
     <div class="container">
         <h1>&#x1FAC0; Extractor UCO v4</h1>
-        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 52 | Internaciones 115 | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 17) &mdash; <b>v4.4 fix Territorio (resto de anatomía con \n)</b></p>
+        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 52 | Internaciones 115 | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 17) &mdash; <b>v4.5 fix CCG estudios efectuados (Palacio)</b></p>
 
         <div class="main-layout">
             <div class="panel">
@@ -1459,11 +1459,16 @@ El extractor detecta autom&aacute;ticamente:
 
             let procList = [];
 
-            // CCG diagnóstica
-            if (/ccg|cinecoronariograf/i.test(iTexto)) {
+            // CCG diagnóstica — solo cuenta menciones en la narrativa de
+            // "Evolución / Complicaciones:". FIX iter 25 (Palacio): la sección
+            // "Estudios efectuados: ECG, ..., CCG" es una lista descriptiva, no
+            // procedimientos. Recortamos iTexto hasta el marker para no pescarla.
+            const idxEstudios = iTexto.search(/estudios\s+efectuados\s*:/i);
+            const iTextoCCG = idxEstudios >= 0 ? iTexto.substring(0, idxEstudios) : iTexto;
+            if (/ccg|cinecoronariograf/i.test(iTextoCCG)) {
                 const pCcg = crearProc('CCG SLAS');
-                if (/femoral/i.test(iTexto)) pCcg['Vía'] = 'Femoral';
-                else if (/radial/i.test(iTexto)) pCcg['Vía'] = 'Radial';
+                if (/femoral/i.test(iTextoCCG)) pCcg['Vía'] = 'Femoral';
+                else if (/radial/i.test(iTextoCCG)) pCcg['Vía'] = 'Radial';
                 procList.push(pCcg);
             }
 
