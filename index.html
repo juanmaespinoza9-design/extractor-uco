@@ -219,7 +219,7 @@
 <body>
     <div class="container">
         <h1>&#x1FAC0; Extractor UCO v4</h1>
-        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes <b>59</b> | Internaciones 115 | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 47) &mdash; <b>v4.10 Pacientes + Alergia + antec raros</b></p>
+        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 59 | Internaciones <b>116</b> | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 47) &mdash; <b>v4.11 fixes Palacio (Síncope, SCC, Éxito, Complicación)</b></p>
 
         <div class="main-layout">
             <div class="panel">
@@ -381,7 +381,7 @@ El extractor detecta autom&aacute;ticamente:
             'Días_Total', 'Motivo_Texto', 'Programado', 'Derivado', 'FEVI_%', 'FEVI_Rango', 'TAPSE', 'Disf_VD', 'Destino',
             'Causa_Óbito', 'TA_Ing', 'FC_Ing', 'SatO2_Ing', 'NYHA_Ing', 'NYHA_Egr', 'PCR_Intra', 'T_Onset_Door',
             'T_Door_ECG', 'T_Door_Balloon', 'T_Door_Needle', 'GRACE_Score', 'TIMI_Score', 'CHA2DS2_VASc',
-            'HAS_BLED', 'SCASEST', 'SCACEST', 'AI bajo riesgo', 'AI mod riesgo', 'AI alto riesgo', 'Killip',
+            'HAS_BLED', 'SCASEST', 'SCACEST', 'SCC', 'AI bajo riesgo', 'AI mod riesgo', 'AI alto riesgo', 'Killip',
             'ANOCA', 'MINOCA', 'INOCA', 'DPE', 'IAM_Tipo1', 'IAM_Tipo2', 'IAM_Tipo3a', 'IAM_Tipo3b',
             'IAM_Tipo3c', 'IAM_Tipo4', 'ICC', 'Cardiorenal', 'SBVM', 'Shock Cardiogenico', 'Síncope',
             'Arr_FAARV', 'Arr_FABRV', 'Arr_Flutter', 'Arr_TVS', 'Arr_TVNS', 'Arr_TPS', 'Arr_BAV', 'Arr_ENS',
@@ -397,7 +397,7 @@ El extractor detecta autom&aacute;ticamente:
             'Sop_ARM_Traqueo', 'Sop_VNI', 'Sop_BIAC', 'Sop_BIC_Furo', 'Sop_Via_Central', 'Sop_Cook',
             'Sop_Sonda', 'Sop_TAM', 'Sop_MCP_Trans', 'Sop_Amiodarona_EV', 'Inf_IAC', 'Inf_NAV', 'Inf_NAC',
             'Inf_ITU', 'Inf_IPPB', 'Inf_Otros', 'CRUSADE_Score'
-        ]; // 115 cols
+        ]; // 116 cols — iter 26 v4.11: + SCC
 
         const COL_PROCEDIMIENTOS = [
             'ID_Proc', 'ID_Intern', 'Fecha', 'Tipo', 'Territorio', 'Vaso',
@@ -1213,11 +1213,20 @@ El extractor detecta autom&aacute;ticamente:
             else if (datos.pacientes.IP_Mod_Sev === 'Sí') datos.pacientes.Valvular = 'IP mod - sev';
             else                                           datos.pacientes.Valvular = 'No';
 
-            // ========== INTERNACIONES (104 cols) ==========
+            // ========== INTERNACIONES ==========
             // Internaciones y Procedimientos buscan en textoIntern (post-split)
-            // para no confundir antecedentes con internación actual
-            const iTexto = textoIntern;          // texto de la internación actual
-            const iLower = textoInternLower;      // idem en minúsculas
+            // para no confundir antecedentes con internación actual.
+            //
+            // FIX iter 26 v4.11: además recortar antes de las secciones post-evolución
+            // que listan SÍNTOMAS como ejemplo y generan falsos positivos en
+            // detectores de motivos clínicos (Síncope, Angor, etc.).
+            // Caso PALACIO: "Pautas de alarma el egreso: ..., síncope." marcaba Síncope=Sí.
+            const _recorteMarkers = /(?:^|\n)\s*(?:pautas?\s+de\s+alarma|tratamiento\s+al\s+alta|indicaciones?\s+al\s+egreso|ECG\s+al\s+(?:egreso|alta)|laboratorio\s+al\s+(?:egreso|alta))/i;
+            const _matchRecorte = textoIntern.match(_recorteMarkers);
+            const iTexto = _matchRecorte
+                ? textoIntern.substring(0, _matchRecorte.index)
+                : textoIntern;
+            const iLower = iTexto.toLowerCase();
 
             datos.internaciones.ID_Intern = idInternacion;
             datos.internaciones.ID_Paciente = dniPaciente;
@@ -1267,6 +1276,14 @@ El extractor detecta autom&aacute;ticamente:
             datos.internaciones.Derivado = buscarSiNo(iLower, ['derivad']);
             datos.internaciones.SCASEST = buscarSiNo(iLower, ['scasest', 'iamsest', 'sca sin elevaci']);
             datos.internaciones.SCACEST = buscarSiNo(iLower, ['scacest', 'iamcest', 'sca con elevaci']);
+
+            // SCC — Síndrome Coronario Crónico (iter 26 v4.11). La angina crónica
+            // estable, angor crónico estable y cardiopatía isquémica crónica entran acá.
+            datos.internaciones.SCC = buscarSiNo(iLower, [
+                's[ií]ndrome\\s+coronario\\s+cr[oó]nico', '\\bSCC\\b',
+                'angina\\s+cr[oó]nica\\s+estable', 'angor\\s+cr[oó]nico\\s+estable',
+                'cardiopat[ií]a\\s+isqu[eé]mica\\s+cr[oó]nica'
+            ]);
 
             // Killip — FIX v6.2: dropdown del Sheet (NO / I / II / III / IV)
             // Si no se menciona Killip (típico fuera de SCA), devuelve 'NO' (uppercase).
@@ -1698,8 +1715,15 @@ El extractor detecta autom&aacute;ticamente:
                         if (/femoral/i.test(seg)) pAtc['Vía'] = 'Femoral';
                         else if (/radial/i.test(seg)) pAtc['Vía'] = 'Radial';
 
-                        pAtc['Éxito'] = buscarSiNo(segLower, ['[eé]xito', 'exitoso', 'satisfactori']);
-                        pAtc['Complicación'] = buscarSiNo(segLower, ['complicaci[oó]n']);
+                        // Éxito (iter 26 v4.11): default "Sí", "No" solo si menciona explícitamente no-éxito
+                        pAtc['Éxito'] = /no\s+exitoso|\bfrustrad?[ao]?\b|no\s+angioplasti|no\s+revasculariz|fall(?:o|ido|ida)|sin\s+[eé]xito/i.test(seg) ? 'No' : 'Sí';
+                        // Complicación (iter 26 v4.11): requiere contexto explícito.
+                        // La palabra "Complicaciones" del header "Evolución / Complicaciones:"
+                        // disparaba falsos positivos.
+                        pAtc['Complicación'] = (
+                            /(?:presento|presentó|tuvo|con|hubo)\s+complicaci[oó]n/i.test(seg) ||
+                            /complicaci[oó]n[:\s-]+(?:hematoma|sangrado|disecci|rotura|trombosis|ictus|infarto|perforaci)/i.test(seg)
+                        ) ? 'Sí' : 'No';
                         pAtc.Sangrado = buscarSiNo(segLower, ['sangrado', 'hemorragia']);
                         pAtc.Hematoma = buscarSiNo(segLower, ['hematoma']);
                         pAtc.Reinterv = buscarSiNo(segLower, ['reintervenci[oó]n']);
@@ -1730,8 +1754,12 @@ El extractor detecta autom&aacute;ticamente:
                     if (/femoral/i.test(iTexto)) pAtc['Vía'] = 'Femoral';
                     else if (/radial/i.test(iTexto)) pAtc['Vía'] = 'Radial';
 
-                    pAtc['Éxito'] = buscarSiNo(iLower, ['[eé]xito', 'exitoso', 'satisfactori']);
-                    pAtc['Complicación'] = buscarSiNo(iLower, ['complicaci[oó]n']);
+                    // Éxito y Complicación con misma lógica que el bloque por segmentos (iter 26 v4.11)
+                    pAtc['Éxito'] = /no\s+exitoso|\bfrustrad?[ao]?\b|no\s+angioplasti|no\s+revasculariz|fall(?:o|ido|ida)|sin\s+[eé]xito/i.test(iTexto) ? 'No' : 'Sí';
+                    pAtc['Complicación'] = (
+                        /(?:presento|presentó|tuvo|con|hubo)\s+complicaci[oó]n/i.test(iTexto) ||
+                        /complicaci[oó]n[:\s-]+(?:hematoma|sangrado|disecci|rotura|trombosis|ictus|infarto|perforaci)/i.test(iTexto)
+                    ) ? 'Sí' : 'No';
                     pAtc.Sangrado = buscarSiNo(iLower, ['sangrado', 'hemorragia']);
                     pAtc.Hematoma = buscarSiNo(iLower, ['hematoma']);
                     pAtc.Reinterv = buscarSiNo(iLower, ['reintervenci[oó]n']);
