@@ -219,7 +219,7 @@
 <body>
     <div class="container">
         <h1>&#x1FAC0; Extractor UCO v4</h1>
-        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 52 | Internaciones 115 | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 17) &mdash; <b>v4.5 fix CCG estudios efectuados (Palacio)</b></p>
+        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes <b>59</b> | Internaciones 115 | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 47) &mdash; <b>v4.10 Pacientes + Alergia + antec raros</b></p>
 
         <div class="main-layout">
             <div class="panel">
@@ -241,6 +241,8 @@
                     <label for="modePdf">&#x1F4C4; Subir PDF</label>
                     <input type="radio" name="inputMode" id="modeText" value="text">
                     <label for="modeText">&#x270F;&#xFE0F; Pegar texto</label>
+                    <input type="radio" name="inputMode" id="modeSeg" value="seg">
+                    <label for="modeSeg">&#x1F4C5; Seguimiento texto</label>
                 </div>
 
                 <div id="dropzone" class="dropzone" onclick="document.getElementById('pdfInput').click();">
@@ -279,16 +281,16 @@ El extractor detecta autom&aacute;ticamente:
                     <div class="stat"><div class="num" id="statProc">0</div><div class="label">Procedim.</div></div>
                     <div class="stat"><div class="num" id="statLab">0</div><div class="label">Laboratorio</div></div>
                     <div class="stat"><div class="num" id="statMed">0</div><div class="label">Medicaci&oacute;n</div></div>
-                    <div class="stat"><div class="num" id="statSeg">0</div><div class="label">Seguimiento</div></div>
+                    <div class="stat" id="statSegWrap" style="display:none;"><div class="num" id="statSeg">0</div><div class="label">Seguim.</div></div>
                 </div>
 
                 <div class="tabs">
-                    <button class="tab active" onclick="showTab('pacientes')">&#x1F464; Pacientes <span class="count" id="countPac">0</span></button>
-                    <button class="tab" onclick="showTab('internaciones')">&#x1F3E5; Internaciones <span class="count" id="countInt">0</span></button>
-                    <button class="tab" onclick="showTab('procedimientos')">&#x2695;&#xFE0F; Procedimientos <span class="count" id="countProc">0</span></button>
-                    <button class="tab" onclick="showTab('laboratorio')">&#x1F9EA; Laboratorio <span class="count" id="countLab">0</span></button>
-                    <button class="tab" onclick="showTab('medicacion')">&#x1F48A; Medicaci&oacute;n <span class="count" id="countMed">0</span></button>
-                    <button class="tab" onclick="showTab('seguimiento')">&#x1F4C5; Seguimiento <span class="count" id="countSeg">0</span></button>
+                    <button class="tab active" id="tabBtnPac" onclick="showTab('pacientes')">&#x1F464; Pacientes <span class="count" id="countPac">0</span></button>
+                    <button class="tab" id="tabBtnInt" onclick="showTab('internaciones')">&#x1F3E5; Internaciones <span class="count" id="countInt">0</span></button>
+                    <button class="tab" id="tabBtnProc" onclick="showTab('procedimientos')">&#x2695;&#xFE0F; Procedimientos <span class="count" id="countProc">0</span></button>
+                    <button class="tab" id="tabBtnLab" onclick="showTab('laboratorio')">&#x1F9EA; Laboratorio <span class="count" id="countLab">0</span></button>
+                    <button class="tab" id="tabBtnMed" onclick="showTab('medicacion')">&#x1F48A; Medicaci&oacute;n <span class="count" id="countMed">0</span></button>
+                    <button class="tab" id="tabBtnSeg" style="display:none;" onclick="showTab('seguimiento')">&#x1F4C5; Seguimiento <span class="count" id="countSeg">0</span></button>
                 </div>
 
                 <div id="tabContents">
@@ -296,7 +298,7 @@ El extractor detecta autom&aacute;ticamente:
                         <div class="table-container"><table class="data-table" id="tablePacientes"></table></div>
                         <div class="col-order" id="orderPac"></div>
                         <div class="copy-row">
-                            <span>Copiar fila &rarr; Hoja "Pacientes" (52 cols)</span>
+                            <span>Copiar fila &rarr; Hoja "Pacientes" (59 cols)</span>
                             <button class="btn btn-success btn-small" onclick="copiarHoja('pacientes')">&#x1F4CB; Copiar</button>
                         </div>
                     </div>
@@ -343,10 +345,11 @@ El extractor detecta autom&aacute;ticamente:
                         <div class="table-container"><table class="data-table" id="tableSeguimiento"></table></div>
                         <div class="col-order" id="orderSeg"></div>
                         <div class="copy-row">
-                            <span>Copiar fila &rarr; Hoja "Seguimiento" (17 cols) - Completar manualmente</span>
+                            <span>Copiar fila &rarr; Hoja "Seguimiento" (47 cols)</span>
                             <button class="btn btn-success btn-small" onclick="copiarHoja('seguimiento')">&#x1F4CB; Copiar</button>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>
@@ -361,14 +364,17 @@ El extractor detecta autom&aacute;ticamente:
         const COL_PACIENTES = [
             'ID_Intern',
             'DNI_Paciente', 'Apellido', 'Nombre', 'Fecha_Nac', 'Edad', 'Sexo', 'Teléfono', 'Obra_Social',
+            'Alergia_Farmaco',
             'HTA', 'DLP', 'DBT', 'Tipo_DBT', 'TBQ', 'Paq_Año', 'Obesidad', 'Sobrepeso', 'AHF',
+            'Chagas', 'MCP_Hipertrofica', 'MCP_Dilatada_Isq', 'MCP_Dilatada_No_Isq',
+            'Hipertension_Pulmonar', 'Otros_Antecedentes',
             'ERC', 'Diálisis', 'EPOC', 'SAHOS', 'Hipotir', 'Anemia', 'Hepatop',
             'Valvular', 'FA_Flutter', 'IC_Previa', 'ACV_Previo', 'Art_Perif',
             'IAM_Previo', 'ATC_Previa', 'CRM_Previo', 'Cx_Valv', 'TAVI', 'MCP', 'CDI', 'TRC',
             'Flutter_Previo', 'TVS_Previa', 'TVNS_Previa', 'TPS_Previa',
             'BAV_Previo', 'WPW_Previo', 'BS_Previa', 'ENS_Previa', 'EI_Previa',
             'EAo_Sev', 'EAo_Mod', 'IM_Mod_Sev', 'IT_Mod_Sev', 'IP_Mod_Sev'
-        ]; // 52 cols — ID_Intern liga Pacientes 1:1 con Internaciones (snapshot por internación)
+        ]; // 59 cols — iter 26 v4.10: + Alergia_Farmaco + 5 antec raros + Otros_Antecedentes
 
         const COL_INTERNACIONES = [
             'ID_Intern', 'ID_Paciente', 'Fecha_Ing', 'Fecha_Egr', 'Días_UCO', 'Dias_RCV', 'Días_Piso',
@@ -412,11 +418,24 @@ El extractor detecta autom&aacute;ticamente:
             'Dosis_Sacub', 'Dosis_ARM', 'Dosis_Estatina', 'Dosis_SGLT2i', 'Dosis_Furo', 'Dosis_ACOD'
         ]; // 35 cols
 
+        // COL_SEGUIMIENTO — modo "Seguimiento texto" (iter 26):
+        // Espejo de la hoja Seguimiento v6 del Sheet UCO (47 cols).
+        // ID_Intern y Ventana son fórmulas en el Sheet — acá quedan vacíos.
         const COL_SEGUIMIENTO = [
-            'ID_Seguim', 'ID_Intern', 'Fecha_Contacto', 'Ventana', 'Vivo', 'Causa_Muerte',
-            'Reingreso_CV', 'Reingreso_IC', 'Reinfarto', 'Re_ATC', 'ACV_Post', 'MACE',
-            'NYHA_Actual', 'Control_Cardio', 'Adherencia', 'FEY_Control', 'Notas'
-        ]; // 17 cols
+            'DNI_Paciente', 'ID_Intern', 'Fecha_Control', 'Ventana',
+            'Estado_Clinico', 'Causa_Otros_Estado', 'TA',
+            'Derivacion_a_Guardia', 'Motivo_Otros_Guardia',
+            'Estudios_PostAlta', 'Notas', 'Adherencia',
+            'AAS', 'Clopidogrel', 'Prasugrel', 'Ticagrelor',
+            'Acenocum', 'Rivarox', 'Apixaban', 'Dabigatran',
+            'HBPM', 'BB', 'IECA', 'ARA2', 'Sacub_Vals', 'ARM', 'SGLT2i',
+            'BloqCa', 'Nitrato', 'Estatina',
+            'Dosis_Est', 'Furosemida', 'Tiazida', 'Amiodarona',
+            'Dosis_AAS', 'Dosis_Clopi', 'Dosis_BB', 'Dosis_IECA', 'Dosis_ARA2',
+            'Dosis_Sacub', 'Dosis_ARM', 'Dosis_Estatina', 'Dosis_SGLT2i',
+            'Dosis_Furo', 'Dosis_ACOD',
+            'Otras_Medicaciones', 'Causa_Muerte'
+        ]; // 47 cols
 
         let datos = { pacientes: {}, internaciones: {}, procedimientos: {}, laboratorio: {}, medicacion: {}, seguimiento: {} };
         let datosMedPrevia = null; // segunda fila de medicación previa
@@ -478,11 +497,37 @@ El extractor detecta autom&aacute;ticamente:
 
         function setInputMode(mode) {
             const dz = document.getElementById('dropzone');
-            const toggle = document.querySelectorAll('input[name="inputMode"]');
-            if (mode === 'text') {
-                dz.style.display = 'none';
+            const txt = document.getElementById('inputText');
+            const inputIdIntern = document.getElementById('idInternacion');
+            const labelIdIntern = inputIdIntern ? inputIdIntern.previousElementSibling : null;
+
+            // PDF visible solo en modo 'pdf'
+            dz.style.display = (mode === 'pdf') ? '' : 'none';
+
+            // ID Internación se oculta en modo Seguimiento (sale del DNI vía fórmula en el Sheet)
+            if (inputIdIntern) {
+                inputIdIntern.style.display = (mode === 'seg') ? 'none' : '';
+                if (labelIdIntern) labelIdIntern.style.display = (mode === 'seg') ? 'none' : '';
+            }
+
+            // Tooltip con template guía solo en modo Seguimiento
+            if (mode === 'seg') {
+                txt.title =
+                    'Formato sugerido (no obligatorio):\n\n' +
+                    'Fecha: 15/06/2026\n' +
+                    'DNI: 12345678\n' +
+                    'TA: 130/80\n' +
+                    'Estado: estable\n' +
+                    'Adherencia: buena\n' +
+                    'Fue a guardia: no (o IC / Angor / Infección / HTA / HipoTA / Estudio Patológico)\n' +
+                    'Estudios post alta: ETT sin cambios / PEG / SPECT / EcoStress / RNM\n' +
+                    'Medicación actual:\n' +
+                    '  - AAS 100 mg\n' +
+                    '  - Bisoprolol 5 mg\n' +
+                    '  - Atorvastatina 40 mg\n' +
+                    'Notas: paciente refiere... Examen físico sp.';
             } else {
-                dz.style.display = '';
+                txt.title = '';
             }
         }
 
@@ -568,12 +613,15 @@ El extractor detecta autom&aacute;ticamente:
             return '';
         }
 
-        // Buscar sección de medicación previa / habitual
+        // Buscar sección de medicación previa / habitual.
+        // Sinónimos aceptados: "Medicación habitual", "Medicación previa",
+        // "Tratamiento previo", "MH" (abreviación de Medicación Habitual, iter 26).
         function extraerSeccionPrevia(texto) {
             const patrones = [
                 /medicaci[oó]n\s+habitual[:\s]*([\s\S]*?)(?=\n\s*\n|\nmedicaci[oó]n\s+(?:al\s+)?(?:egreso|alta)|$)/i,
                 /tratamiento\s+previo[:\s]*([\s\S]*?)(?=\n\s*\n|\nmedicaci[oó]n\s+(?:al\s+)?(?:egreso|alta)|$)/i,
-                /medicaci[oó]n\s+previa[:\s]*([\s\S]*?)(?=\n\s*\n|\nmedicaci[oó]n\s+(?:al\s+)?(?:egreso|alta)|$)/i
+                /medicaci[oó]n\s+previa[:\s]*([\s\S]*?)(?=\n\s*\n|\nmedicaci[oó]n\s+(?:al\s+)?(?:egreso|alta)|$)/i,
+                /\bMH\b[:\s]*([\s\S]*?)(?=\n\s*\n|\nmedicaci[oó]n\s+(?:al\s+)?(?:egreso|alta)|$)/i
             ];
             for (const patron of patrones) {
                 const match = texto.match(patron);
@@ -643,15 +691,120 @@ El extractor detecta autom&aacute;ticamente:
         }
 
         // =====================================================
+        // MODO SEGUIMIENTO TEXTO (iter 26)
+        // =====================================================
+        // Parser tolerante del texto del control post alta. No tiene formato fijo;
+        // extrae lo que puede y mete el texto completo en Notas para que el residente
+        // lo edite/recorte después. Llena las 47 cols del modelo Seguimiento v6.
+        function procesarSeguimientoTexto(texto, dniManual) {
+            const textoLower = texto.toLowerCase();
+            const seg = {};
+            COL_SEGUIMIENTO.forEach(function(col) { seg[col] = ''; });
+
+            // DNI — del campo manual o del texto
+            let dni = (dniManual || '').trim();
+            if (!dni) {
+                const dniMatch = texto.match(/DNI[:\s]*([A-Z]?\d{1,3}(?:\.\d{3}){1,2}|\d{6,8})/i);
+                if (dniMatch) dni = dniMatch[1];
+            }
+            seg.DNI_Paciente = dni;
+
+            // Fecha_Control — busca "Fecha:" / "Fecha de control:" o la primera fecha
+            let fechaMatch = texto.match(/Fecha\s*(?:de\s*control)?[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i);
+            if (!fechaMatch) fechaMatch = texto.match(/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/);
+            if (fechaMatch) seg.Fecha_Control = fechaMatch[1];
+
+            // TA — "TA: 130/80", "tensión arterial 130/80", "PA 130/80"
+            const taMatch = texto.match(/(?:\bTA\b|\bPA\b|tensi[oó]n\s+arterial|presi[oó]n\s+arterial)[:.\s]*(\d{2,3}\s*\/\s*\d{2,3})/i);
+            if (taMatch) seg.TA = taMatch[1].replace(/\s/g, '');
+
+            // Estado_Clinico — primera coincidencia gana (ordenado por especificidad)
+            if (/insuficiencia\s+card|descompens|edema\s+agudo\s+de\s+pulm/i.test(textoLower)) {
+                seg.Estado_Clinico = 'Insuficiencia cardíaca';
+            } else if (/\bfiebre\b/i.test(textoLower)) {
+                seg.Estado_Clinico = 'Fiebre';
+            } else if (/infecci[oó]n|infeccioso/i.test(textoLower)) {
+                seg.Estado_Clinico = 'Infección';
+            } else if (/hipotensi[oó]n|\bhipoTA\b/i.test(texto)) {
+                seg.Estado_Clinico = 'Hipotensión';
+            } else if (/hipertensi[oó]n|emergencia\s+hipertensiva|\bHTA\s+(?:severa|descontrolada|no\s+controlada)/i.test(texto)) {
+                seg.Estado_Clinico = 'Hipertensión';
+            } else if (/\bestable\b/i.test(textoLower)) {
+                seg.Estado_Clinico = 'Estable';
+            }
+
+            // Derivacion_a_Guardia — busca "fue a guardia", "consultó a guardia", "reingreso"
+            if (/(?:fue\s+a|derivad[oa]\s+a|consult[oó]\s+(?:a\s+)?)?\bguardia\b|reingres/i.test(textoLower)) {
+                if (/insuficiencia\s+card|\bIC\b/i.test(texto)) seg.Derivacion_a_Guardia = 'IC';
+                else if (/\bangor\b|angina/i.test(textoLower)) seg.Derivacion_a_Guardia = 'Angor';
+                else if (/infecci[oó]n/i.test(textoLower)) seg.Derivacion_a_Guardia = 'Infección';
+                else if (/hipotensi[oó]n|\bhipoTA\b/i.test(texto)) seg.Derivacion_a_Guardia = 'HipoTA';
+                else if (/hipertensi[oó]n|\bHTA\b/i.test(texto)) seg.Derivacion_a_Guardia = 'HTA';
+                else if (/estudio\s+patol[oó]gico/i.test(textoLower)) seg.Derivacion_a_Guardia = 'Estudio Patológico';
+            }
+
+            // Adherencia
+            const adhMatch = texto.match(/adherencia[:\s]*(\w+)/i);
+            if (adhMatch) {
+                const adh = adhMatch[1].toLowerCase();
+                if (/buena|excelente|completa/.test(adh)) seg.Adherencia = 'Buena';
+                else if (/regular|parcial/.test(adh)) seg.Adherencia = 'Regular';
+                else if (/mala|nula|pobre|incumpl/.test(adh)) seg.Adherencia = 'Mala';
+            }
+
+            // Estudios_PostAlta — concatena keywords detectadas
+            const estudios = [];
+            if (/\bETT\b|ecocardiograma\s+transtor[aá]cico/i.test(texto)) {
+                const ettCambios = /ETT[^.\n]*(?:sin\s+cambios|con\s+cambios|nuevo)[^.\n]*/i.exec(texto);
+                estudios.push(ettCambios ? ettCambios[0].trim() : 'ETT');
+            }
+            if (/\bPEG\b|ergometr[íi]a/i.test(texto)) estudios.push('PEG');
+            if (/\bSPECT\b/i.test(texto)) estudios.push('SPECT');
+            if (/eco[\s-]?stress|ecoestres/i.test(texto)) estudios.push('EcoStress');
+            if (/\bRNM\b|resonancia\s+(?:magn[eé]tica\s+)?card[íi]aca?/i.test(texto)) estudios.push('RNM');
+            seg.Estudios_PostAlta = estudios.join(' · ');
+
+            // Medicación (33 cols) — reutiliza el parser de Egreso aplicado al texto completo
+            const med = extraerMedicacionDesdeTexto(texto, '', 'Control_PostAlta');
+            Object.keys(med).forEach(function(k) {
+                if (k !== 'ID_Intern' && k !== 'Momento' && seg.hasOwnProperty(k)) {
+                    seg[k] = med[k];
+                }
+            });
+
+            // Notas — texto completo (residente lo edita/recorta antes de copiar)
+            seg.Notas = texto.trim();
+
+            return seg;
+        }
+
+        // =====================================================
         // FUNCIÓN PRINCIPAL DE EXTRACCIÓN
         // =====================================================
 
         function extraerDatos() {
+            const modo = document.querySelector('input[name="inputMode"]:checked').value;
             const texto = document.getElementById('inputText').value;
+
+            if (!texto.trim()) {
+                alert(modo === 'seg'
+                    ? 'Pegá el texto del control post alta'
+                    : 'Por favor, pegá el texto del epicrisis');
+                return;
+            }
+
+            // Modo Seguimiento — flujo separado
+            if (modo === 'seg') {
+                datos = { pacientes: {}, internaciones: {}, procedimientos: {}, laboratorio: {}, medicacion: {}, seguimiento: {} };
+                datosMedPrevia = null;
+                const dniManual = document.getElementById('dniPaciente').value || '';
+                datos.seguimiento = procesarSeguimientoTexto(texto, dniManual);
+                mostrarResultadosSeguimiento();
+                return;
+            }
+
             let dniPaciente = document.getElementById('dniPaciente').value || '';
             const idInternacion = document.getElementById('idInternacion').value || '';
-
-            if (!texto.trim()) { alert('Por favor, pegá el texto del epicrisis'); return; }
 
             const textoLower = texto.toLowerCase();
             const lineas = texto.split('\n').map(l => l.trim()).filter(l => l);
@@ -865,8 +1018,18 @@ El extractor detecta autom&aacute;ticamente:
             if (/\bvar[oó]n\b|\bmasculino\b/i.test(texto)) datos.pacientes.Sexo = 'M';
             else if (/\bmujer\b|\bfemenin[ao]\b/i.test(texto)) datos.pacientes.Sexo = 'F';
 
-            datos.pacientes.Teléfono = '';
+            // Teléfono (iter 26) — busca "Teléfono" / "Telefono" / "Tel" / "Tel." (case-insensitive),
+            // seguidos opcionalmente de ":" o "." y del número. Acepta dígitos, espacios,
+            // guiones, paréntesis, "+" y "." en el número (formatos típicos AR e internacionales).
+            // \btel\.?(?!\w) evita matchear "televisión" / "telegrama" etc.
+            const telMatch = texto.match(/(?:tel[eé]fono|\btel\.?(?!\w))\s*:?\s*([+()\d\s\-.]{6,})/i);
+            datos.pacientes.Teléfono = telMatch ? telMatch[1].trim() : '';
             datos.pacientes.Obra_Social = obraSocial || '';
+
+            // Alergia a fármacos (iter 26 v4.10) — captura "alergia a X" / "alérgico a X" / "RAM a X".
+            // Default "No" si no encuentra. Si captura, devuelve el texto de la droga/clase (max 80 chars).
+            const alergiaMatch = texto.match(/(?:alerg[ií]a?\s+(?:a\s+)?|al[eé]rgico[s]?\s+a\s+|RAM\s+(?:a\s+)?)([^\n.,;]{2,80})/i);
+            datos.pacientes.Alergia_Farmaco = alergiaMatch ? alergiaMatch[1].trim() : 'No';
 
             // FRCV
             datos.pacientes.HTA = buscarSiNo(textoLower, ['hipertens', '\\bhta\\b']);
@@ -892,6 +1055,22 @@ El extractor detecta autom&aacute;ticamente:
             datos.pacientes.Obesidad = buscarSiNo(textoLower, ['\\bobes[oa]\\b', 'obesidad']);
             datos.pacientes.Sobrepeso = buscarSiNo(textoLower, ['sobrepeso']);
             datos.pacientes.AHF = buscarSiNo(textoLower, ['antecedentes familiares', '\\bahf\\b']);
+
+            // Antecedentes raros (iter 26 v4.10) — después de FRCV, antes de comorbilidades.
+            // Orden importa para MCP Dilatada: chequear "no isquémica" PRIMERO porque
+            // contiene "isquémica" como substring.
+            datos.pacientes.Chagas = buscarSiNo(textoLower, ['\\bchagas\\b']);
+            datos.pacientes.MCP_Hipertrofica = buscarSiNo(textoLower, [
+                'miocardiopat[ií]a\\s+hipertr[oó]fica', '\\bmch\\b'
+            ]);
+            const esDilNoIsq = /miocardiopat[ií]a\s+dilatada\s+no\s+isqu[eé]mic/i.test(texto);
+            const esDilIsq = !esDilNoIsq && /miocardiopat[ií]a\s+dilatada\s+isqu[eé]mic/i.test(texto);
+            datos.pacientes.MCP_Dilatada_No_Isq = esDilNoIsq ? 'Sí' : 'No';
+            datos.pacientes.MCP_Dilatada_Isq = esDilIsq ? 'Sí' : 'No';
+            datos.pacientes.Hipertension_Pulmonar = buscarSiNo(textoLower, [
+                'hipertensi[oó]n\\s+pulmonar', '\\bhtp\\b'
+            ]);
+            datos.pacientes.Otros_Antecedentes = ''; // 100% manual
 
             // Comorbilidades
             datos.pacientes.ERC = buscarSiNo(textoLower, ['renal cr[oó]nica', '\\berc\\b', '\\birc\\b', 'enfermedad renal']);
@@ -1672,24 +1851,9 @@ El extractor detecta autom&aacute;ticamente:
                 document.getElementById('btnMedPrevia').style.display = 'none';
             }
 
-            // ========== SEGUIMIENTO (17 cols) - estructura vacía ==========
-            datos.seguimiento.ID_Seguim = '';
-            datos.seguimiento.ID_Intern = idInternacion;
-            datos.seguimiento.Fecha_Contacto = '';
-            datos.seguimiento.Ventana = '';
-            datos.seguimiento.Vivo = '';
-            datos.seguimiento.Causa_Muerte = '';
-            datos.seguimiento.Reingreso_CV = '';
-            datos.seguimiento.Reingreso_IC = '';
-            datos.seguimiento.Reinfarto = '';
-            datos.seguimiento.Re_ATC = '';
-            datos.seguimiento.ACV_Post = '';
-            datos.seguimiento.MACE = '';
-            datos.seguimiento.NYHA_Actual = '';
-            datos.seguimiento.Control_Cardio = '';
-            datos.seguimiento.Adherencia = '';
-            datos.seguimiento.FEY_Control = '';
-            datos.seguimiento.Notas = '';
+            // Seguimiento NO se genera desde acá — iter 26: la evolución del control
+            // post-alta llega 2 semanas después en formato libre, se carga 100% manual
+            // en la hoja Seguimiento del Sheet UCO.
 
             mostrarResultados();
         }
@@ -1698,43 +1862,89 @@ El extractor detecta autom&aacute;ticamente:
         // MOSTRAR RESULTADOS
         // =====================================================
 
+        // Modo Seguimiento — muestra solo el tab Seguimiento, oculta los de epicrisis
+        function mostrarResultadosSeguimiento() {
+            document.getElementById('statsBar').style.display = 'flex';
+
+            // Ocultar stats y tabs de epicrisis
+            ['statPac', 'statInt', 'statProc', 'statLab', 'statMed'].forEach(function(id) {
+                const el = document.getElementById(id);
+                if (el && el.parentElement) el.parentElement.style.display = 'none';
+            });
+            ['tabBtnPac', 'tabBtnInt', 'tabBtnProc', 'tabBtnLab', 'tabBtnMed'].forEach(function(id) {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+
+            // Mostrar stat y tab de Seguimiento
+            document.getElementById('statSegWrap').style.display = '';
+            document.getElementById('tabBtnSeg').style.display = '';
+
+            // Stat = cantidad de campos llenos (excluye DNI_Paciente y los vacíos)
+            const countSeg = Object.keys(datos.seguimiento).filter(function(k) {
+                const v = datos.seguimiento[k];
+                return v && v !== '' && v !== 'No';
+            }).length;
+            document.getElementById('statSeg').textContent = countSeg;
+            document.getElementById('countSeg').textContent = countSeg;
+
+            renderTable('tableSeguimiento', datos.seguimiento, COL_SEGUIMIENTO);
+            document.getElementById('orderSeg').innerHTML = '<b>Orden:</b> ' + COL_SEGUIMIENTO.join(' &rarr; ');
+
+            // Activar la tab de Seguimiento
+            showTab('seguimiento');
+
+            document.getElementById('alertBox').innerHTML =
+                '<div class="alert alert-success">&#x2705; Seguimiento extraído. Revis&aacute; los campos ' +
+                '(especialmente Notas, que trae el texto completo para que lo recortes), ' +
+                'y copi&aacute; la fila a la hoja Seguimiento del Sheet UCO.</div>';
+        }
+
         function mostrarResultados() {
             document.getElementById('statsBar').style.display = 'flex';
+
+            // Asegurar que stats y tabs de epicrisis estén visibles (por si veníamos de modo Seguimiento)
+            ['statPac', 'statInt', 'statProc', 'statLab', 'statMed'].forEach(function(id) {
+                const el = document.getElementById(id);
+                if (el && el.parentElement) el.parentElement.style.display = '';
+            });
+            ['tabBtnPac', 'tabBtnInt', 'tabBtnProc', 'tabBtnLab', 'tabBtnMed'].forEach(function(id) {
+                const el = document.getElementById(id);
+                if (el) el.style.display = '';
+            });
+            // Ocultar stat/tab de Seguimiento
+            document.getElementById('statSegWrap').style.display = 'none';
+            document.getElementById('tabBtnSeg').style.display = 'none';
 
             const countPac = Object.values(datos.pacientes).filter(v => v && v !== 'No' && v !== '' && v !== 'Nunca').length;
             const countInt = Object.values(datos.internaciones).filter(v => v && v !== 'No' && v !== '').length;
             const countProc = (datos.procedimientos_all || []).length;
             const countLab = Object.values(datos.laboratorio).filter(v => v && v !== '' && v !== 'Ingreso').length;
             const countMed = Object.values(datos.medicacion).filter(v => v === 'Sí').length;
-            const countSeg = Object.values(datos.seguimiento).filter(v => v && v !== '').length;
 
             document.getElementById('statPac').textContent = countPac;
             document.getElementById('statInt').textContent = countInt;
             document.getElementById('statProc').textContent = countProc;
             document.getElementById('statLab').textContent = countLab;
             document.getElementById('statMed').textContent = countMed;
-            document.getElementById('statSeg').textContent = countSeg;
 
             document.getElementById('countPac').textContent = countPac;
             document.getElementById('countInt').textContent = countInt;
             document.getElementById('countProc').textContent = countProc;
             document.getElementById('countLab').textContent = countLab;
             document.getElementById('countMed').textContent = countMed;
-            document.getElementById('countSeg').textContent = countSeg;
 
             renderTable('tablePacientes', datos.pacientes, COL_PACIENTES);
             renderTable('tableInternaciones', datos.internaciones, COL_INTERNACIONES);
             renderTableMulti('tableProcedimientos', datos.procedimientos_all || [datos.procedimientos], COL_PROCEDIMIENTOS);
             renderTable('tableLaboratorio', datos.laboratorio, COL_LABORATORIO);
             renderTable('tableMedicacion', datos.medicacion, COL_MEDICACION);
-            renderTable('tableSeguimiento', datos.seguimiento, COL_SEGUIMIENTO);
 
             document.getElementById('orderPac').innerHTML = '<b>Orden:</b> ' + COL_PACIENTES.join(' &rarr; ');
             document.getElementById('orderInt').innerHTML = '<b>Orden:</b> ' + COL_INTERNACIONES.join(' &rarr; ');
             document.getElementById('orderProc').innerHTML = '<b>Orden:</b> ' + COL_PROCEDIMIENTOS.join(' &rarr; ');
             document.getElementById('orderLab').innerHTML = '<b>Orden:</b> ' + COL_LABORATORIO.join(' &rarr; ');
             document.getElementById('orderMed').innerHTML = '<b>Orden:</b> ' + COL_MEDICACION.join(' &rarr; ');
-            document.getElementById('orderSeg').innerHTML = '<b>Orden:</b> ' + COL_SEGUIMIENTO.join(' &rarr; ');
 
             let alertMsg = '&#x2705; Extracci&oacute;n completada. Revis&aacute; cada pesta&ntilde;a y copi&aacute; las filas.';
             if (datosMedPrevia) {
