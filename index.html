@@ -219,7 +219,7 @@
 <body>
     <div class="container">
         <h1>&#x1FAC0; Extractor UCO v4</h1>
-        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 59 | Internaciones <b>116</b> | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 47) &mdash; <b>v4.11 fixes Palacio (Síncope, SCC, Éxito, Complicación)</b></p>
+        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 63 | Internaciones <b>116</b> | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 47) &mdash; <b>v4.13 · eco previo&rarr;Paciente · CVF · FEVI eco</b></p>
 
         <div class="main-layout">
             <div class="panel">
@@ -373,8 +373,9 @@ El extractor detecta autom&aacute;ticamente:
             'IAM_Previo', 'ATC_Previa', 'CRM_Previo', 'Cx_Valv', 'TAVI', 'MCP', 'CDI', 'TRC',
             'Flutter_Previo', 'TVS_Previa', 'TVNS_Previa', 'TPS_Previa',
             'BAV_Previo', 'WPW_Previo', 'BS_Previa', 'ENS_Previa', 'EI_Previa',
-            'EAo_Sev', 'EAo_Mod', 'IM_Mod_Sev', 'IT_Mod_Sev', 'IP_Mod_Sev'
-        ]; // 59 cols — iter 26 v4.10: + Alergia_Farmaco + 5 antec raros + Otros_Antecedentes
+            'EAo_Sev', 'EAo_Mod', 'IM_Mod_Sev', 'IT_Mod_Sev', 'IP_Mod_Sev',
+            'FEVI_Previa_%', 'FEVI_Rango_Previa', 'TAPSE_Previa', 'Disf_VD_Previa'
+        ]; // 63 cols — iter 28: + eco previo (FEVI/TAPSE previa) | iter 26 v4.10: + Alergia_Farmaco + 5 antec raros + Otros_Antecedentes
 
         const COL_INTERNACIONES = [
             'ID_Intern', 'ID_Paciente', 'Fecha_Ing', 'Fecha_Egr', 'Días_UCO', 'Dias_RCV', 'Días_Piso',
@@ -1213,6 +1214,29 @@ El extractor detecta autom&aacute;ticamente:
             else if (datos.pacientes.IP_Mod_Sev === 'Sí') datos.pacientes.Valvular = 'IP mod - sev';
             else                                           datos.pacientes.Valvular = 'No';
 
+            // ===== Eco PREVIO (antecedentes) → Paciente (iter 28) =====
+            // FEVI/TAPSE de la sección ANTECEDENTES (pre-corte). El eco de la
+            // internación actual se maneja aparte en el bloque Internaciones (lee iTexto).
+            datos.pacientes['FEVI_Previa_%'] = '';
+            datos.pacientes.FEVI_Rango_Previa = '';
+            datos.pacientes.TAPSE_Previa = '';
+            datos.pacientes.Disf_VD_Previa = '';
+            if (textoAntec) {
+                const feviPrevMatches = [...textoAntec.matchAll(/\bFE(?:VI|Y|y)?\b[^.%\d\n]{0,25}?(\d{1,2})\s*%/gi),
+                                         ...textoAntec.matchAll(/fracci[oó]n\s+de\s+eyecci[oó]n[^.%\d\n]{0,20}?(\d{1,2})\s*%/gi)];
+                if (feviPrevMatches.length > 0) {
+                    const fp = parseInt(feviPrevMatches[feviPrevMatches.length - 1][1]);  // último eco previo
+                    datos.pacientes['FEVI_Previa_%'] = fp + '%';
+                    datos.pacientes.FEVI_Rango_Previa = fp < 40 ? '<40%' : (fp < 50 ? '40-49%' : '>=50%');
+                }
+                const tapsePrevMatches = [...textoAntec.matchAll(/tapse[:\s]*(\d{1,2})/gi)];
+                if (tapsePrevMatches.length > 0) {
+                    const tp = parseInt(tapsePrevMatches[tapsePrevMatches.length - 1][1]);
+                    datos.pacientes.TAPSE_Previa = tp;
+                    datos.pacientes.Disf_VD_Previa = tp < 17 ? 'Sí' : 'No';
+                }
+            }
+
             // ========== INTERNACIONES ==========
             // Internaciones y Procedimientos buscan en textoIntern (post-split)
             // para no confundir antecedentes con internación actual.
@@ -1368,8 +1392,10 @@ El extractor detecta autom&aacute;ticamente:
             datos.internaciones.Otro_Dx = '';
 
             // FIX v4.1: FEVI — tomar el ÚLTIMO valor (eco más cercano al alta)
-            const feviMatches = [...iTexto.matchAll(/FEy?\s*(\d{1,2})\s*%/gi),
-                                 ...iTexto.matchAll(/\(FEy?\s*(\d{1,2})%?\)/gi)];
+            // FIX iter 28: aceptar relleno entre "FE/FEy/FEVI" y el número
+            // ("Fey por teich del 66%", "FEy por Simpson 40%") y "fracción de eyección NN%".
+            const feviMatches = [...iTexto.matchAll(/\bFE(?:VI|Y|y)?\b[^.%\d\n]{0,25}?(\d{1,2})\s*%/gi),
+                                 ...iTexto.matchAll(/fracci[oó]n\s+de\s+eyecci[oó]n[^.%\d\n]{0,20}?(\d{1,2})\s*%/gi)];
             if (feviMatches.length > 0) {
                 const fevi = parseInt(feviMatches[feviMatches.length - 1][1]);  // último
                 datos.internaciones['FEVI_%'] = fevi + '%';
@@ -1378,7 +1404,8 @@ El extractor detecta autom&aacute;ticamente:
                 else datos.internaciones.FEVI_Rango = '>=50%';
             } else {
                 // Change #7: FEVI conservada = >=50% when no numeric FEVI found
-                if (/fsvi\s*conservada|funci[oó]n\s+sist[oó]lica.*conservada/i.test(iTexto)) {
+                // FIX iter 28: aceptar conservad[ao]s (género/plural) y FEy/FSVI conservada
+                if (/fsvi\s*conservad|fey?\s*conservad|funci[oó]n\s+sist[oó]lica[^.\n]*conservad/i.test(iTexto)) {
                     datos.internaciones['FEVI_%'] = '';
                     datos.internaciones.FEVI_Rango = '>=50%';
                 }
@@ -1807,8 +1834,17 @@ El extractor detecta autom&aacute;ticamente:
             // CVE (cardioversión eléctrica)
             if (/cardioversi[oó]n el[eé]ctrica|\bcve\b/i.test(iTexto)) {
                 const pCve = crearProc('CVE');
-                pCve['Éxito'] = /reversi[oó]n a ritmo sinusal|exitoso|[eé]xito/i.test(iTexto) ? 'Sí' : '';
+                pCve['Éxito'] = /reversi[oó]n a ritmo sinusal|exitos[ao]|[eé]xito/i.test(iTexto) ? 'Sí' : '';
                 procList.push(pCve);
+            }
+
+            // CVF (cardioversión farmacológica) — iter 28: faltaba la rama
+            // (solo existía CVE eléctrica). Caso Castroman: "cardioversión
+            // farmacológica con carga y mantenimiento de amiodarona exitosa".
+            if (/cardioversi[oó]n\s+farmacol[oó]gica|\bcvf\b/i.test(iTexto)) {
+                const pCvf = crearProc('CVF');
+                pCvf['Éxito'] = /reversi[oó]n a ritmo sinusal|exitos[ao]|[eé]xito/i.test(iTexto) ? 'Sí' : '';
+                procList.push(pCvf);
             }
 
             // TAVI
