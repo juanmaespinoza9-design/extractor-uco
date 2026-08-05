@@ -219,7 +219,7 @@
 <body>
     <div class="container">
         <h1>&#x1FAC0; Extractor UCO v4</h1>
-        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 63 | Internaciones <b>116</b> | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 47) &mdash; <b>v4.13 · eco previo&rarr;Paciente · CVF · FEVI eco</b></p>
+        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 63 | Internaciones <b>119</b> | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 47) &mdash; <b>v4.21 · Lote PDF solo local (oculto en la web) · Apellido en Internaciones (col C) · Cat&aacute;logo Dx v2 (36 cat.) · FA bloqueada&rarr;Otro · fix motivo multi-l&iacute;nea · Control MCP · Lab/Hb · eco previo</b></p>
 
         <div class="main-layout">
             <div class="panel">
@@ -239,6 +239,8 @@
                 <div class="mode-toggle">
                     <input type="radio" name="inputMode" id="modePdf" value="pdf" checked>
                     <label for="modePdf">&#x1F4C4; Subir PDF</label>
+                    <input type="radio" name="inputMode" id="modeLote" value="lote">
+                    <label for="modeLote" id="labelLote" style="display:none;">&#x1F5C2;&#xFE0F; Lote PDF</label>
                     <input type="radio" name="inputMode" id="modeText" value="text">
                     <label for="modeText">&#x270F;&#xFE0F; Pegar texto</label>
                     <input type="radio" name="inputMode" id="modeSeg" value="seg">
@@ -266,7 +268,7 @@ El extractor detecta autom&aacute;ticamente:
 &bull; Dosis de medicaci&oacute;n
 &bull; Medicaci&oacute;n previa (si se detecta secci&oacute;n)"></textarea>
 
-                <button class="btn" onclick="extraerDatos()">&#x1F50D; EXTRAER DATOS</button>
+                <button class="btn" id="btnExtraer" onclick="extraerDatos()">&#x1F50D; EXTRAER DATOS</button>
                 <button class="btn btn-warning" onclick="limpiar()">&#x1F5D1;&#xFE0F; Limpiar</button>
 
                 <div id="alertBox"></div>
@@ -274,6 +276,26 @@ El extractor detecta autom&aacute;ticamente:
 
             <div class="panel">
                 <h2>&#x1F4CA; Datos Extra&iacute;dos por Hoja</h2>
+
+                <!-- v4.17 — Modo Lote: tabla de control + copiado multi-fila -->
+                <div id="lotePanel" style="display:none;">
+                    <div class="alert alert-info" style="margin-top:0;margin-bottom:10px;">
+                        &#x1F5C2;&#xFE0F; <b>Modo Lote:</b> revis&aacute; la tabla, complet&aacute; el <b>ID Internaci&oacute;n</b> de cada fila, destild&aacute; lo que no va, y copi&aacute; hoja por hoja. Las filas salen en el mismo orden en todas las hojas &mdash; no cambies los tildes entre la parte 1 y la parte 2 de Internaciones.
+                    </div>
+                    <div class="stats-bar" id="loteStats"></div>
+                    <div class="table-container" style="max-height:420px;"><table class="data-table" id="tableLote"></table></div>
+                    <div class="copy-row" style="flex-wrap:wrap;gap:8px;">
+                        <span style="width:100%;margin-bottom:4px;">Copiar todas las filas incluidas &rarr; pegar en la primera fila libre de cada hoja (Internaciones en 2 partes: 1 en col A, 2 en col J de la MISMA fila):</span>
+                        <button class="btn btn-success btn-small" onclick="copiarLote('pacientes')">&#x1F464; Pacientes</button>
+                        <button class="btn btn-success btn-small" onclick="copiarLoteInt1()">&#x1F3E5; Intern. 1) A-E</button>
+                        <button class="btn btn-success btn-small" onclick="copiarLoteInt2()">&#x1F3E5; Intern. 2) J+</button>
+                        <button class="btn btn-success btn-small" onclick="copiarLote('procedimientos')">&#x2695;&#xFE0F; Procedimientos</button>
+                        <button class="btn btn-success btn-small" onclick="copiarLote('laboratorio')">&#x1F9EA; Laboratorio</button>
+                        <button class="btn btn-success btn-small" onclick="copiarLote('medicacion')">&#x1F48A; Medicaci&oacute;n Egreso</button>
+                        <button class="btn btn-success btn-small" id="btnLoteMedPrevia" onclick="copiarLote('medicacion_previa')" style="display:none;">&#x1F48A; Medicaci&oacute;n Previa</button>
+                    </div>
+                    <div id="loteAlert"></div>
+                </div>
 
                 <div class="stats-bar" id="statsBar" style="display:none;">
                     <div class="stat"><div class="num" id="statPac">0</div><div class="label">Pacientes</div></div>
@@ -304,12 +326,20 @@ El extractor detecta autom&aacute;ticamente:
                     </div>
 
                     <div id="tab-internaciones" class="tab-content">
+                        <div id="dxPanel" style="background:#eef4ff;border:1px solid #b6c9ef;border-radius:8px;padding:12px 16px;margin-bottom:12px;color:#1a2a4a">
+                          <div style="font-size:12px;font-weight:700;color:#1e3a8a;margin-bottom:6px">DIAGNÓSTICO DE LA INTERNACIÓN — confirmá o corregí antes de copiar</div>
+                          <div style="font-size:13px;margin-bottom:10px">Motivo (texto): <span id="dxMotivoTxt" style="font-style:italic">—</span></div>
+                          <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center">
+                            <label style="font-size:13px;font-weight:600">Dx Principal:&nbsp;<select id="dxPrincipalSel" style="padding:5px;font-size:13px;max-width:520px"></select></label>
+                            <label style="font-size:13px;font-weight:600">Dx Secundario:&nbsp;<select id="dxSecundarioSel" style="padding:5px;font-size:13px;max-width:520px"></select></label>
+                          </div>
+                        </div>
                         <div class="table-container"><table class="data-table" id="tableInternaciones"></table></div>
                         <div class="col-order" id="orderInt"></div>
                         <div class="copy-row" style="flex-wrap: wrap;">
                             <span style="width:100%; margin-bottom:8px;">&#x26A0;&#xFE0F; Copiar en 2 partes para no pisar f&oacute;rmulas de D&iacute;as:</span>
-                            <button class="btn btn-success btn-small" onclick="copiarInternacionesParte1()">&#x1F4CB; 1) Copiar A-D (IDs + Fechas)</button>
-                            <button class="btn btn-success btn-small" onclick="copiarInternacionesParte2()">&#x1F4CB; 2) Copiar I en adelante (Dx + Scores + Inf + Arr + Drogas + Soporte)</button>
+                            <button class="btn btn-success btn-small" onclick="copiarInternacionesParte1()">&#x1F4CB; 1) Copiar A-E (IDs + Apellido + Fechas)</button>
+                            <button class="btn btn-success btn-small" onclick="copiarInternacionesParte2()">&#x1F4CB; 2) Copiar J en adelante (Dx + Scores + Inf + Arr + Drogas + Soporte)</button>
                         </div>
                     </div>
 
@@ -378,7 +408,7 @@ El extractor detecta autom&aacute;ticamente:
         ]; // 63 cols — iter 28: + eco previo (FEVI/TAPSE previa) | iter 26 v4.10: + Alergia_Farmaco + 5 antec raros + Otros_Antecedentes
 
         const COL_INTERNACIONES = [
-            'ID_Intern', 'ID_Paciente', 'Fecha_Ing', 'Fecha_Egr', 'Días_UCO', 'Dias_RCV', 'Días_Piso',
+            'ID_Intern', 'ID_Paciente', 'Apellido', 'Fecha_Ing', 'Fecha_Egr', 'Días_UCO', 'Dias_RCV', 'Días_Piso',
             'Días_Total', 'Motivo_Texto', 'Programado', 'Derivado', 'FEVI_%', 'FEVI_Rango', 'TAPSE', 'Disf_VD', 'Destino',
             'Causa_Óbito', 'TA_Ing', 'FC_Ing', 'SatO2_Ing', 'NYHA_Ing', 'NYHA_Egr', 'PCR_Intra', 'T_Onset_Door',
             'T_Door_ECG', 'T_Door_Balloon', 'T_Door_Needle', 'GRACE_Score', 'TIMI_Score', 'CHA2DS2_VASc',
@@ -397,8 +427,9 @@ El extractor detecta autom&aacute;ticamente:
             'Droga_Dobu', 'Droga_Levo', 'Droga_Milri', 'Droga_Iso', 'Droga_NTG', 'Droga_NPS', 'Sop_ARM_IOT',
             'Sop_ARM_Traqueo', 'Sop_VNI', 'Sop_BIAC', 'Sop_BIC_Furo', 'Sop_Via_Central', 'Sop_Cook',
             'Sop_Sonda', 'Sop_TAM', 'Sop_MCP_Trans', 'Sop_Amiodarona_EV', 'Inf_IAC', 'Inf_NAV', 'Inf_NAC',
-            'Inf_ITU', 'Inf_IPPB', 'Inf_Otros', 'CRUSADE_Score'
-        ]; // 116 cols — iter 26 v4.11: + SCC
+            'Inf_ITU', 'Inf_IPPB', 'Inf_Otros', 'CRUSADE_Score',
+            'Dx_Principal_Categoria', 'Dx_Secundario_Categoria'
+        ]; // 119 cols — v4.20: + Apellido (col C) | iter 29: + Dx Principal/Secundario (al final)
 
         const COL_PROCEDIMIENTOS = [
             'ID_Proc', 'ID_Intern', 'Fecha', 'Tipo', 'Territorio', 'Vaso',
@@ -437,6 +468,171 @@ El extractor detecta autom&aacute;ticamente:
             'Dosis_Furo', 'Dosis_ACOD',
             'Otras_Medicaciones', 'Causa_Muerte'
         ]; // 47 cols
+
+        // iter 29 — Diagnóstico Principal: mapea el texto del motivo (frase tras "Cursó internación
+        // por…") a una categoría del catálogo. Orden importa: específicos primero (EAP antes de IC).
+        // v4.19 — catálogo Dx v2 (36 categorías, iter 34). Cambios respecto de v4.18:
+        // SCASEST/AI separados en 3, shock ≠ SBVM, cardiorrenal ≠ IRA, FA ≠ aleteo,
+        // emergencia ≠ urgencia HTA, bradiarritmias en 6 entidades, 5 categorías nuevas
+        // (valvulopatía, síndrome aórtico, miocarditis/pericarditis, PCR recuperado,
+        // infección de dispositivo) y "Disnea en estudio" eliminada (cae en Otro).
+        function mapearDxPrincipal(txt) {
+            const base = (txt || '').toLowerCase();
+            if (!base) return '';
+            // Los exportes del HC parten la primera letra de algunas palabras al
+            // reconstruir el texto ("i nsuficiencia", "A ngina" — caso BOSQUE). Se
+            // arma una variante compactada y se testea contra AMBAS: así se suman
+            // matches sin perder ninguno de los que ya andaban.
+            const compacto = base.replace(/\b([a-záéíóúñ]) (?=[a-záéíóúñ]{3,})/g, '$1');
+            // Prefijo reusable: "BAV", "bloqueo AV", "bloqueo aurículo-ventricular"…
+            const BAV = '(?:\\bbav\\b|bloqueo\\s+(?:a[uv]\\b|aur[ií]culo.?ventricular|auriculoventricular))';
+            const rx = (fuente, flags) => new RegExp(fuente.replace(/BAV_/g, BAV), flags || 'i');
+            const R = [
+                // "FA bloqueada" NO es fibrilación auricular como motivo: el problema de
+                // esa internación es la bradicardia (regla del usuario, iter 34).
+                [/fibrilaci[oó]n auricular\s+bloquead|\bfa\b\s+bloquead/, 'Otro'],
+                // SCA — "sin elevación" ANTES que "con elevación": la frase negativa
+                // contiene a la positiva como substring.
+                [/scasest|iamsest|(sca|iam)\s+sin\s+elevaci|sin\s+elevaci[oó]n\s+del\s+(segmento\s+)?st/, 'IAM sin elevación del ST'],
+                [/angina inestable|angor inestable/, 'Angina inestable'],
+                [/minoca/, 'MINOCA'],
+                [/\binoca\b|dolor precordial/, 'Dolor precordial (INOCA)'],
+                [/infarto tipo 2|iam tipo 2|iam secundario/, 'Infarto tipo 2 / secundario'],
+                [/elevaci[oó]n del\s+(segmento\s+)?st|scacest|iamcest|supradesnivel del\s+(segmento\s+)?st/, 'Síndrome coronario agudo con elevación del ST'],
+                [/angioplast[ií]a\s+program|cinecoronariograf[ií]a\s+program|program.*(atc|angioplast|hemodin|coronariograf)|(atc|ccg).*program/, 'Angioplastia / cinecoronariografía programada'],
+                [/edema agudo de pulm[oó]n|\beap\b/, 'Edema agudo de pulmón'],
+                [/shock cardiog[eé]nico/, 'Shock cardiogénico'],
+                [/bajo volumen minuto|\bsbvm\b/, 'Síndrome de bajo volumen minuto'],
+                [/insuficiencia card[ií]aca|ic descompensad|\bicc\b|insuf.*card[ií]ac|falla card[ií]aca|\bic\b\s+(izquierda|derecha|global|descompensada|con)/, 'Insuficiencia cardíaca descompensada'],
+                [/cardiorren/, 'Síndrome cardiorrenal'],
+                [/insuficiencia renal aguda|injuria renal aguda|fracaso renal/, 'Insuficiencia renal aguda'],
+                // POP antes que valvulopatía: "postoperatorio de reemplazo valvular" es POP.
+                [/postoperatorio|post.?operatori|post.?quir[uú]rgic|endarterectom[ií]a|reemplazo valvular|\btavi\b/, 'Postoperatorio de procedimiento cardiovascular'],
+                [/valvulopat[ií]a|(estenosis|insuficiencia)\s+(a[oó]rtica|mitral|tric[uú]spide)\s+(severa|cr[ií]tica)|\beao\s+severa\b/, 'Valvulopatía severa / descompensada'],
+                [/disecci[oó]n a[oó]rtica|s[ií]ndrome a[oó]rtico|hematoma intramural|[uú]lcera a[oó]rtica penetrante/, 'Síndrome aórtico agudo (disección)'],
+                [/aleteo auricular|\bflutter\b/, 'Aleteo auricular'],
+                [/fibrilaci[oó]n auricular|\bfaarv\b|\bfa\b de (alta|reciente)/, 'Fibrilación auricular'],
+                [/taquicardia paroxist|taquicardia supraventricular|\btps\b|\btpsv\b|taquicardia auricular/, 'Taquicardia supraventricular'],
+                [/taquicardia ventricular|arritmia ventricular|\btvs\b|\btvns\b|\btv\b/, 'Taquicardia ventricular'],
+                // Bradiarritmias con grado explícito (el genérico va en R_FALLBACK).
+                // `BAV_` cubre las dos formas de escribirlo: sigla y frase completa.
+                [rx('BAV_\\s*(?:de\\s*)?(?:completo|tercer\\s*grado|3(?:er)?\\s*grado|iii|alto\\s*grado)'), 'BAV completo'],
+                [rx('BAV_\\s*(?:de\\s*)?2\\s*:\\s*1'), 'BAV 2:1'],
+                [rx('BAV_\\s*(?:de\\s*)?(?:segundo|2(?:do)?)\\s*grado|mobitz'), 'BAV 2° grado'],
+                [rx('BAV_\\s*(?:de\\s*)?(?:primer|1(?:er)?)\\s*grado'), 'BAV 1° grado'],
+                [/n[oó]dulo sinusal|enfermedad del n[oó]dulo/, 'Enfermedad del nódulo sinusal'],
+                [/bradicardia sinusal/, 'Bradicardia sinusal'],
+                [/implante.*(marcapaso|dispositivo|cardiodesfibrilador|\bcdi\b|\bmcp\b|\btrc\b)|recambio.*(marcapaso|generador|dispositivo)|colocaci[oó]n.*marcapaso/, 'Implante o recambio de dispositivo programado'],
+                [/paro cardiorrespiratorio|\bpcr\b\s+recuperad|muerte s[uú]bita recuperad|reanimaci[oó]n cardiopulmonar/, 'Paro cardiorrespiratorio recuperado'],
+                [/s[íi]ncope/, 'Síncope'],
+                // Infección de dispositivo antes que endocarditis: "infección de bolsillo
+                // de CDI" no es endocarditis salvo compromiso valvular/de catéter.
+                [/infecci[oó]n\s+de(l)?\s+(bolsillo|dispositivo|generador|marcapaso|cdi)/, 'Infección de dispositivo cardíaco'],
+                [/endocarditis/, 'Endocarditis infecciosa'],
+                [/miocarditis|pericarditis|taponamiento card[ií]aco/, 'Miocarditis / pericarditis aguda'],
+                [/emergencia hipertensiv/, 'Emergencia hipertensiva'],
+                [/urgencia hipertensiv|crisis hipertensiv|hipertensi[oó]n arterial severa|\bhta\b severa/, 'Urgencia hipertensiva'],
+                [/tromboembolismo pulmonar|\btep\b/, 'Tromboembolismo pulmonar']
+            ];
+            // Genéricos: solo se consultan si NINGUNA regla de R matcheó. Van aparte
+            // porque compiten mal por posición — "bloqueo AV de segundo grado" arranca
+            // con el genérico "bloqueo AV", que ganaría por aparecer antes que el grado.
+            // Un BAV sin grado se sugiere completo (el más frecuente como motivo de
+            // ingreso a UCO: n=51 en la base histórica); el residente confirma.
+            const R_FALLBACK = [
+                [rx('BAV_'), 'BAV completo'],
+                [/bradiarritmia|bradicardia/, 'Bradicardia sinusal'],
+            ];
+            // v4.19 — gana el que aparece PRIMERO en el texto, no el primero de la lista.
+            // Los médicos escriben el motivo principal al inicio ("insuficiencia cardíaca
+            // izquierda, con IAM sin elevación del ST" → IC, no IAMSEST). El orden del
+            // array queda solo como desempate por especificidad, y de paso resuelve el
+            // solapamiento "sin elevación del ST" ⊃ "elevación del ST": la frase negativa
+            // empieza antes. Sin esto, un motivo compuesto se clasificaba por el azar del
+            // orden de las reglas.
+            let mejor = null;
+            for (const [regex, cat] of R) {
+                const m = base.match(regex) || compacto.match(regex);
+                if (!m) continue;
+                if (!mejor || m.index < mejor.pos) mejor = { pos: m.index, cat: cat };
+            }
+            if (mejor) return mejor.cat;
+            for (const [regex, cat] of R_FALLBACK) {
+                if (regex.test(base) || regex.test(compacto)) return cat;
+            }
+            return 'Otro';
+        }
+
+        // iter 29 — catálogos para los menús del panel de diagnóstico (deben coincidir con la hoja _Catalogos).
+        // v4.19 — catálogo Dx v2 (iter 34). MISMO ORDEN que la columna A de _Catalogos.
+        const CAT_PRINCIPAL_EXT = [
+            'Síndrome coronario agudo con elevación del ST',
+            'IAM sin elevación del ST',
+            'Angina inestable',
+            'Dolor precordial (INOCA)',
+            'MINOCA',
+            'Infarto tipo 2 / secundario',
+            'Angioplastia / cinecoronariografía programada',
+            'Insuficiencia cardíaca descompensada',
+            'Edema agudo de pulmón',
+            'Shock cardiogénico',
+            'Síndrome de bajo volumen minuto',
+            'Síndrome cardiorrenal',
+            'Insuficiencia renal aguda',
+            'Fibrilación auricular',
+            'Aleteo auricular',
+            'Taquicardia supraventricular',
+            'Taquicardia ventricular',
+            'BAV 1° grado',
+            'BAV 2° grado',
+            'BAV 2:1',
+            'BAV completo',
+            'Enfermedad del nódulo sinusal',
+            'Bradicardia sinusal',
+            'Paro cardiorrespiratorio recuperado',
+            'Síncope',
+            'Implante o recambio de dispositivo programado',
+            'Valvulopatía severa / descompensada',
+            'Síndrome aórtico agudo (disección)',
+            'Miocarditis / pericarditis aguda',
+            'Endocarditis infecciosa',
+            'Infección de dispositivo cardíaco',
+            'Emergencia hipertensiva',
+            'Urgencia hipertensiva',
+            'Tromboembolismo pulmonar',
+            'Postoperatorio de procedimiento cardiovascular',
+            'Otro'
+        ];
+        const CAT_SECUNDARIO_EXT = [
+            'Fibrilación / aleteo auricular', 'Anemia',
+            'Insuficiencia cardíaca descompensada',
+            'Síndrome coronario agudo sin elevación del ST / angina inestable',
+            'Síndrome coronario agudo con elevación del ST',
+            'Taquicardia ventricular / arritmia ventricular',
+            'Taquicardia supraventricular paroxística / auricular',
+            'Bradiarritmia / bloqueo aurículo-ventricular / enfermedad del nódulo sinusal',
+            'Shock cardiogénico / síndrome de bajo volumen minuto',
+            'Síndrome cardiorrenal / insuficiencia renal aguda',
+            'Edema agudo de pulmón', 'Emergencia / urgencia hipertensiva', 'Síncope',
+            'Endocarditis infecciosa', 'Tromboembolismo pulmonar',
+            'Neumonía (asociada a ventilación / adquirida)', 'Infección urinaria',
+            'Infección asociada a catéter / foco endovascular', 'Bacteriemia / sepsis',
+            'Infección de piel y partes blandas', 'Infección de dispositivo',
+            'Insuficiencia renal aguda / reagudizada',
+            'Accidente cerebrovascular / AIT intra-internación', 'Otro'
+        ];
+        function poblarDxSelects(sugPrincipal) {
+            const p = document.getElementById('dxPrincipalSel'), s = document.getElementById('dxSecundarioSel');
+            if (!p || !s) return;
+            const opt = (v) => { const o = document.createElement('option'); o.value = v; o.textContent = v || '—'; return o; };
+            p.innerHTML = ''; s.innerHTML = '';
+            p.appendChild(opt(''));
+            CAT_PRINCIPAL_EXT.forEach(c => { const o = opt(c); if (c === sugPrincipal) o.selected = true; p.appendChild(o); });
+            s.appendChild(opt(''));
+            CAT_SECUNDARIO_EXT.forEach(c => s.appendChild(opt(c)));
+            const mt = document.getElementById('dxMotivoTxt');
+            if (mt) mt.textContent = (datos.internaciones && datos.internaciones.Motivo_Texto) || '—';
+        }
 
         let datos = { pacientes: {}, internaciones: {}, procedimientos: {}, laboratorio: {}, medicacion: {}, seguimiento: {} };
         let datosMedPrevia = null; // segunda fila de medicación previa
@@ -502,8 +698,31 @@ El extractor detecta autom&aacute;ticamente:
             const inputIdIntern = document.getElementById('idInternacion');
             const labelIdIntern = inputIdIntern ? inputIdIntern.previousElementSibling : null;
 
-            // PDF visible solo en modo 'pdf'
-            dz.style.display = (mode === 'pdf') ? '' : 'none';
+            // PDF visible en modos 'pdf' y 'lote'
+            dz.style.display = (mode === 'pdf' || mode === 'lote') ? '' : 'none';
+
+            // v4.17 — Modo Lote: selección múltiple; los IDs van por fila en la tabla
+            // de control, así que el textarea, el botón EXTRAER y los inputs de ID
+            // manuales se ocultan.
+            const esLote = (mode === 'lote');
+            const fileInput = document.getElementById('pdfInput');
+            const btnExtraer = document.getElementById('btnExtraer');
+            const idInputs = document.querySelector('.id-inputs');
+            if (fileInput) fileInput.multiple = esLote;
+            txt.style.display = esLote ? 'none' : '';
+            if (btnExtraer) btnExtraer.style.display = esLote ? 'none' : '';
+            if (idInputs) idInputs.style.display = esLote ? 'none' : '';
+            dz.querySelector('.main').textContent = esLote
+                ? 'Arrastrá TODOS los PDFs del lote acá (o hacé click)'
+                : 'Arrastrá un PDF acá o hacé click';
+            dz.querySelector('.sub').textContent = esLote
+                ? 'Cada uno pasa por el mismo motor de extracción y sale una tabla de control'
+                : 'El texto extraído aparece abajo y se puede editar antes de procesar';
+            if (esLote) {
+                if (loteResultados.length) setLoteVisible(true);
+            } else {
+                setLoteVisible(false);
+            }
 
             // ID Internación se oculta en modo Seguimiento (sale del DNI vía fórmula en el Sheet)
             if (inputIdIntern) {
@@ -537,10 +756,23 @@ El extractor detecta autom&aacute;ticamente:
             const fileInput = document.getElementById('pdfInput');
             const radios = document.querySelectorAll('input[name="inputMode"]');
 
-            // File picker
+            // v4.21 — Modo Lote solo LOCAL: el botón se muestra únicamente cuando
+            // el archivo se abre desde el disco (file:). En la página pública
+            // (github.io) queda oculto y el modo es inaccesible desde la UI.
+            if (location.protocol === 'file:') {
+                const lblLote = document.getElementById('labelLote');
+                if (lblLote) lblLote.style.display = '';
+            }
+
+            // File picker — en modo Lote toma todos los archivos seleccionados
             fileInput.addEventListener('change', (e) => {
-                const f = e.target.files[0];
-                if (f) procesarPDF(f);
+                const modo = document.querySelector('input[name="inputMode"]:checked').value;
+                const files = Array.from(e.target.files);
+                if (modo === 'lote') {
+                    if (files.length) procesarLote(files);
+                } else {
+                    if (files[0]) procesarPDF(files[0]);
+                }
                 fileInput.value = ''; // permite re-seleccionar el mismo archivo
             });
 
@@ -552,14 +784,19 @@ El extractor detecta autom&aacute;ticamente:
                 dz.addEventListener(ev, (e) => { e.preventDefault(); e.stopPropagation(); dz.classList.remove('active'); });
             });
             dz.addEventListener('drop', (e) => {
-                const f = e.dataTransfer.files[0];
-                if (!f) return;
-                const esPDF = /pdf/i.test(f.type) || /\.pdf$/i.test(f.name);
-                if (esPDF) {
-                    procesarPDF(f);
-                } else {
+                const modo = document.querySelector('input[name="inputMode"]:checked').value;
+                const todos = Array.from(e.dataTransfer.files);
+                if (!todos.length) return;
+                const pdfs = todos.filter(f => /pdf/i.test(f.type) || /\.pdf$/i.test(f.name));
+                if (!pdfs.length) {
                     dz.querySelector('.main').textContent = '✗ Solo PDFs';
-                    dz.querySelector('.sub').textContent = `Recibí "${f.name}" — arrastrá un archivo .pdf`;
+                    dz.querySelector('.sub').textContent = `Recibí "${todos[0].name}" — arrastrá archivos .pdf`;
+                    return;
+                }
+                if (modo === 'lote') {
+                    procesarLote(pdfs);
+                } else {
+                    procesarPDF(pdfs[0]);
                 }
             });
 
@@ -783,15 +1020,17 @@ El extractor detecta autom&aacute;ticamente:
         // FUNCIÓN PRINCIPAL DE EXTRACCIÓN
         // =====================================================
 
-        function extraerDatos() {
+        // v4.17 — `silencioso`: usado por el Modo Lote para correr el motor sin
+        // tocar la UI de resultados (ni alerts). Devuelve false si no hay texto.
+        function extraerDatos(silencioso) {
             const modo = document.querySelector('input[name="inputMode"]:checked').value;
             const texto = document.getElementById('inputText').value;
 
             if (!texto.trim()) {
-                alert(modo === 'seg'
+                if (!silencioso) alert(modo === 'seg'
                     ? 'Pegá el texto del control post alta'
                     : 'Por favor, pegá el texto del epicrisis');
-                return;
+                return false;
             }
 
             // Modo Seguimiento — flujo separado
@@ -1254,6 +1493,7 @@ El extractor detecta autom&aacute;ticamente:
 
             datos.internaciones.ID_Intern = idInternacion;
             datos.internaciones.ID_Paciente = dniPaciente;
+            datos.internaciones.Apellido = datos.pacientes.Apellido || '';
 
             // Fechas — FIX v6: buscar en TEXTO COMPLETO (no solo iTexto)
             // Razón: en Formato F (header impreso del HC), los campos
@@ -1288,12 +1528,27 @@ El extractor detecta autom&aacute;ticamente:
             datos.internaciones.Días_Piso = '';
             datos.internaciones.Días_Total = '';
 
-            // Motivo de Internación (texto libre) — FIX v6
-            // Captura el campo estructurado "Motivo de Internación: <texto>" del HC.
-            // Útil porque los flags binarios pierden motivos atípicos (ej. angioplastía
-            // periférica, recambio MCP, endocarditis, síncope sin pródromos, etc).
+            // Motivo / Diagnóstico principal (texto) — iter 29, FIX iter 31 (bug LOUGE):
+            // el ancla se busca PRIMERO en textoIntern (narrativa actual post-split) — si se
+            // busca en el texto completo, una internación histórica de los antecedentes
+            // ("En 10/25 cursó internación por IAMSEST…") gana por aparecer antes. Misma
+            // familia que el fix VILLALBA de iter 20. Fallbacks: campo HC "Motivo de
+            // Internación:" y, como último recurso, el ancla en texto completo.
+            // FIX v4.19 (bug LOPEZ): el ancla NO puede cortar en el salto de línea —
+            // pdf.js parte el motivo donde el PDF cambia de renglón ("infarto agudo de
+            // miocardio con \n elevación del ST" quedaba en "…con", perdiendo el SCACEST).
+            // Se permite cruzar líneas y se colapsan los espacios al normalizar.
+            const RX_ANCLA = /Curs[óoa]\s+internaci[oó]n\s+por\s+([^.]{3,200})/i;
+            const norm = (s) => s.replace(/\s+/g, ' ').trim();
+            const anclaNarr = textoIntern.match(RX_ANCLA);
+            const anclaFull = texto.match(RX_ANCLA);
             const motivoTextoMatch = texto.match(/Motivo\s+de\s+Internaci[oó]n[:\s]*([^\n\r]+)/i);
-            datos.internaciones.Motivo_Texto = motivoTextoMatch ? motivoTextoMatch[1].trim() : '';
+            datos.internaciones.Motivo_Texto = anclaNarr ? norm(anclaNarr[1])
+                : (motivoTextoMatch ? norm(motivoTextoMatch[1])
+                : (anclaFull ? norm(anclaFull[1]) : ''));
+            // Diagnóstico Principal (categoría sugerida — el residente la confirma/corrige en el dropdown)
+            datos.internaciones.Dx_Principal_Categoria = mapearDxPrincipal(datos.internaciones.Motivo_Texto);
+            datos.internaciones.Dx_Secundario_Categoria = ''; // opcional, lo elige el residente
 
             // Diagnósticos
             datos.internaciones.Programado = buscarSiNo(iLower, ['programad']);
@@ -1831,6 +2086,16 @@ El extractor detecta autom&aacute;ticamente:
                 procList.push(pRec);
             }
 
+            // Control de marcapasos (iter 30): control/interrogación del dispositivo
+            // durante la internación → fila en Procedimientos. Busca solo en iTexto
+            // (post-corte), así un control mencionado en antecedentes no cuenta.
+            // No colisiona con Implante/Recambio MCP (esas ramas exigen su verbo).
+            if (/(?:control|interrogaci[oó]n|chequeo)\s+(?:de(?:l)?\s+)?(?:mcp\b|marcapasos?|cdi\b|dispositivo)/i.test(iTexto)) {
+                const pCtrlMcp = crearProc('Control MCP');
+                pCtrlMcp['Éxito'] = /normofuncionante|(?:funcionamiento|funci[oó]n)\s+(?:adecuad|normal|correct)|par[aá]metros\s+(?:normales|adecuados|correctos)|adecuado\s+funcionamiento/i.test(iTexto) ? 'Sí' : '';
+                procList.push(pCtrlMcp);
+            }
+
             // CVE (cardioversión eléctrica)
             if (/cardioversi[oó]n el[eé]ctrica|\bcve\b/i.test(iTexto)) {
                 const pCve = crearProc('CVE');
@@ -1873,12 +2138,14 @@ El extractor detecta autom&aacute;ticamente:
 
             // ========== LABORATORIO (16 cols) ==========
             datos.laboratorio.ID_Intern = idInternacion;
-            datos.laboratorio.Momento = 'Ingreso';
+            // Momento (iter 28): detectar "Laboratorio al ingreso/egreso/alta" (egreso = alta)
+            const _mLab = texto.match(/laboratorio\s*(?:al|de|del)?\s*(ingreso|egreso|alta)/i);
+            datos.laboratorio.Momento = (_mLab && /egreso|alta/i.test(_mLab[1])) ? 'Egreso' : 'Ingreso';
 
             const labPatterns = {
                 Troponina: /troponina[:\s]*([0-9.,]+)/i,
                 NT_proBNP: /(?:nt-?\s*)?pro\s*bnp[:\s]*([0-9.,]+)/i,
-                Hb: /\bhb[:\s]*([0-9.,]+)/i,
+                Hb: /\bhb[:\s]+([0-9.,]+)/i,
                 Hto: /\bhto[:\s]*([0-9.,]+)/i,
                 Urea: /\bur(?:ea)?\b[:\s]*([0-9.,]+)/i,
                 Creat: /\bcr(?:ea(?:tinina)?)?\b[:\s]*([0-9.,]+)/i,
@@ -1919,7 +2186,8 @@ El extractor detecta autom&aacute;ticamente:
             // post-alta llega 2 semanas después en formato libre, se carga 100% manual
             // en la hoja Seguimiento del Sheet UCO.
 
-            mostrarResultados();
+            if (!silencioso) mostrarResultados();
+            return true;
         }
 
         // =====================================================
@@ -2000,6 +2268,7 @@ El extractor detecta autom&aacute;ticamente:
 
             renderTable('tablePacientes', datos.pacientes, COL_PACIENTES);
             renderTable('tableInternaciones', datos.internaciones, COL_INTERNACIONES);
+            poblarDxSelects(datos.internaciones.Dx_Principal_Categoria);
             renderTableMulti('tableProcedimientos', datos.procedimientos_all || [datos.procedimientos], COL_PROCEDIMIENTOS);
             renderTable('tableLaboratorio', datos.laboratorio, COL_LABORATORIO);
             renderTable('tableMedicacion', datos.medicacion, COL_MEDICACION);
@@ -2115,29 +2384,34 @@ El extractor detecta autom&aacute;ticamente:
         // COPIAR: Internaciones en 2 partes (no pisar fórmulas de Días)
         // =====================================================
 
-        // Parte 1: Columnas A-D (IDs + Fechas)
+        // Parte 1: Columnas A-E (IDs + Apellido + Fechas)
         function copiarInternacionesParte1() {
-            const columnasParte1 = ['ID_Intern', 'ID_Paciente', 'Fecha_Ing', 'Fecha_Egr'];
+            const columnasParte1 = ['ID_Intern', 'ID_Paciente', 'Apellido', 'Fecha_Ing', 'Fecha_Egr'];
             const fila = columnasParte1.map(col => {
                 const val = datos.internaciones[col];
                 return (val === undefined || val === null) ? '' : val;
             }).join('\t');
 
             navigator.clipboard.writeText(fila).then(() => {
-                document.getElementById('alertBox').innerHTML = `<div class="alert alert-info">&#x1F4CB; Parte 1 copiada (A-D: ${columnasParte1.length} cols). Position&aacute; en celda A y peg&aacute;. Luego copi&aacute; Parte 2.</div>`;
+                document.getElementById('alertBox').innerHTML = `<div class="alert alert-info">&#x1F4CB; Parte 1 copiada (A-E: ${columnasParte1.length} cols). Position&aacute; en celda A y peg&aacute;. Luego copi&aacute; Parte 2.</div>`;
             });
         }
 
-        // Parte 2: Columna I en adelante (Programado hasta el final) — salta E-H (fórmulas de Días)
+        // Parte 2: Columna J en adelante (Motivo_Texto hasta el final) — salta F-I (fórmulas de Días)
         function copiarInternacionesParte2() {
-            const columnasParte2 = COL_INTERNACIONES.slice(8); // Desde índice 8 (Programado) hasta el final
+            const columnasParte2 = COL_INTERNACIONES.slice(9); // Desde índice 9 (Motivo_Texto) hasta el final
+            // iter 29 — tomar la confirmación del residente de los menús del panel de diagnóstico
+            const _selP = document.getElementById('dxPrincipalSel');
+            const _selS = document.getElementById('dxSecundarioSel');
+            if (_selP) datos.internaciones.Dx_Principal_Categoria = _selP.value;
+            if (_selS) datos.internaciones.Dx_Secundario_Categoria = _selS.value;
             const fila = columnasParte2.map(col => {
                 const val = datos.internaciones[col];
                 return (val === undefined || val === null) ? '' : val;
             }).join('\t');
 
             navigator.clipboard.writeText(fila).then(() => {
-                document.getElementById('alertBox').innerHTML = `<div class="alert alert-info">&#x1F4CB; Parte 2 copiada (col I en adelante, ${columnasParte2.length} cols). Position&aacute; en celda I (columna 9) y peg&aacute;.</div>`;
+                document.getElementById('alertBox').innerHTML = `<div class="alert alert-info">&#x1F4CB; Parte 2 copiada (col J en adelante, ${columnasParte2.length} cols). Position&aacute; en celda J (columna 10) y peg&aacute;.</div>`;
             });
         }
 
@@ -2161,6 +2435,231 @@ El extractor detecta autom&aacute;ticamente:
         }
 
         // =====================================================
+        // MODO LOTE (v4.17) — carga masiva multi-PDF
+        // Reusa el motor extraerDatos() sin tocar su lógica: por cada
+        // PDF inyecta el texto en el textarea, corre la extracción en
+        // silencio y guarda un snapshot. La revisión es en lote y el
+        // copiado sale multi-fila, en el mismo orden en todas las hojas.
+        // =====================================================
+
+        let loteResultados = [];
+
+        function setLoteVisible(v) {
+            const lp = document.getElementById('lotePanel');
+            if (!lp) return;
+            lp.style.display = v ? '' : 'none';
+            document.querySelector('.tabs').style.display = v ? 'none' : '';
+            document.getElementById('tabContents').style.display = v ? 'none' : '';
+            if (v) document.getElementById('statsBar').style.display = 'none';
+        }
+
+        async function procesarLote(files) {
+            const dz = document.getElementById('dropzone');
+            const txt = document.getElementById('inputText');
+            // Orden por nombre de archivo (los exportes del HC llevan fecha/hora en el nombre)
+            files = files.slice().sort((a, b) => a.name.localeCompare(b.name, 'es'));
+            dz.classList.remove('active');
+            dz.classList.add('loading');
+            const items = [];
+            for (let i = 0; i < files.length; i++) {
+                const f = files[i];
+                dz.querySelector('.main').textContent = `Procesando ${i + 1}/${files.length}: ${f.name}…`;
+                dz.querySelector('.sub').textContent = 'Modo Lote — extrayendo texto';
+                let texto = null, error = '';
+                try {
+                    texto = await extraerTextoDesdePDF(f);
+                } catch (e) {
+                    error = e.message || 'Error leyendo el PDF';
+                }
+                items.push({ name: f.name, texto: texto, error: error });
+            }
+            procesarLoteTextos(items);
+            txt.value = '';
+            dz.classList.remove('loading');
+            dz.classList.add('active');
+            const nOk = loteResultados.filter(r => r.datos).length;
+            dz.querySelector('.main').textContent = `✓ Lote procesado: ${nOk}/${files.length} PDFs`;
+            dz.querySelector('.sub').textContent = 'Revisá la tabla de control a la derecha';
+        }
+
+        // Separado de procesarLote para poder testearlo sin objetos File
+        function procesarLoteTextos(items) {
+            const txt = document.getElementById('inputText');
+            loteResultados = [];
+            for (const it of items) {
+                const fila = { archivo: it.name, incluir: true, idIntern: '', estado: 'OK', error: it.error || '', datos: null, medPrevia: null };
+                if (it.texto && !it.error) {
+                    try {
+                        txt.value = it.texto;
+                        document.getElementById('dniPaciente').value = '';
+                        document.getElementById('idInternacion').value = '';
+                        const ok = extraerDatos(true);
+                        if (ok === false) throw new Error('PDF sin texto extraíble');
+                        fila.datos = structuredClone(datos);
+                        fila.medPrevia = datosMedPrevia ? structuredClone(datosMedPrevia) : null;
+                    } catch (e) {
+                        fila.estado = 'ERROR';
+                        fila.error = e.message || 'error de extracción';
+                        fila.incluir = false;
+                        fila.datos = null;
+                    }
+                } else {
+                    fila.estado = 'ERROR';
+                    fila.incluir = false;
+                }
+                loteResultados.push(fila);
+            }
+            // Dedup: misma DNI + misma Fecha_Ing = re-impresión (se destilda).
+            // Misma DNI con otra Fecha_Ing = posible reingreso (queda incluida, solo se marca).
+            const vistos = {};
+            for (const r of loteResultados) {
+                if (!r.datos) continue;
+                const dni = r.datos.pacientes.DNI_Paciente || '';
+                const fi = r.datos.internaciones.Fecha_Ing || '';
+                if (!dni) { if (r.estado === 'OK') r.estado = 'REVISAR'; continue; }
+                const key = dni + '|' + fi;
+                if (vistos[key]) {
+                    r.estado = 'DUPLICADO';
+                    r.incluir = false;
+                } else {
+                    if (Object.keys(vistos).some(k => k.split('|')[0] === dni)) r.estado = 'REINGRESO';
+                    vistos[key] = true;
+                }
+            }
+            renderLote();
+        }
+
+        function renderLote() {
+            setLoteVisible(true);
+            const t = document.getElementById('tableLote');
+            let html = '<thead><tr><th>&#x2713;</th><th>#</th><th>Paciente</th><th>DNI</th><th>Ingreso</th><th>Egreso</th><th>Dx Principal (detectado)</th><th>Procs</th><th>Med.Prev</th><th>ID Internaci&oacute;n</th><th>Estado</th></tr></thead><tbody>';
+            loteResultados.forEach((r, i) => {
+                const d = r.datos;
+                const pac = d ? ((d.pacientes.Apellido || '?') + ', ' + (d.pacientes.Nombre || '?')) : ('&#x2717; ' + (r.error || 'sin datos'));
+                const estadoColor = { OK: '#4CAF50', DUPLICADO: '#ff9800', REINGRESO: '#00d4ff', REVISAR: '#ffd93d', ERROR: '#f44336' }[r.estado] || '#888';
+                html += `<tr title="${(r.archivo || '').replace(/"/g, '&quot;')}">` +
+                    `<td><input type="checkbox" ${r.incluir ? 'checked' : ''} onchange="loteResultados[${i}].incluir=this.checked; renderLoteStats();" ${d ? '' : 'disabled'}></td>` +
+                    `<td style="color:#666">${i + 1}</td>` +
+                    `<td class="value-text">${pac}</td>` +
+                    `<td>${d ? (d.pacientes.DNI_Paciente || '') : ''}</td>` +
+                    `<td>${d ? (d.internaciones.Fecha_Ing || '') : ''}</td>` +
+                    `<td>${d ? (d.internaciones.Fecha_Egr || '') : ''}</td>` +
+                    `<td style="font-size:0.7rem">${d ? (d.internaciones.Dx_Principal_Categoria || '') : ''}</td>` +
+                    `<td class="value-num">${d ? (d.procedimientos_all || []).length : ''}</td>` +
+                    `<td>${r.medPrevia ? 'S&iacute;' : ''}</td>` +
+                    `<td><input type="text" id="loteId_${i}" value="${r.idIntern}" placeholder="494546" style="width:80px;padding:4px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.25);border-radius:4px;color:#fff;font-size:0.75rem;" ${d ? '' : 'disabled'}></td>` +
+                    `<td style="color:${estadoColor};font-weight:bold">${r.estado}</td>` +
+                    '</tr>';
+            });
+            html += '</tbody>';
+            t.innerHTML = html;
+            renderLoteStats();
+        }
+
+        function renderLoteStats() {
+            const s = document.getElementById('loteStats');
+            const inc = loteResultados.filter(r => r.incluir);
+            const stat = (n, l) => `<div class="stat"><div class="num">${n}</div><div class="label">${l}</div></div>`;
+            s.innerHTML =
+                stat(loteResultados.length, 'PDFs') +
+                stat(inc.length, 'Incluidos') +
+                stat(loteResultados.filter(r => r.estado === 'DUPLICADO').length, 'Duplicados') +
+                stat(loteResultados.filter(r => r.estado === 'REINGRESO').length, 'Reingresos') +
+                stat(loteResultados.filter(r => r.estado === 'ERROR' || r.estado === 'REVISAR').length, 'Revisar');
+            const btnPrev = document.getElementById('btnLoteMedPrevia');
+            if (btnPrev) btnPrev.style.display = loteResultados.some(r => r.incluir && r.medPrevia) ? 'inline-block' : 'none';
+        }
+
+        // --- Copiado multi-fila ---
+
+        function loteFilasIncluidas() {
+            // Levanta los ID Internación tipeados en la tabla antes de armar las filas
+            loteResultados.forEach((r, i) => {
+                const inp = document.getElementById('loteId_' + i);
+                if (inp) r.idIntern = inp.value.trim();
+            });
+            return loteResultados.filter(r => r.incluir && r.datos);
+        }
+
+        function loteStamp(r) {
+            const d = structuredClone(r.datos);
+            const id = r.idIntern || '';
+            d.pacientes.ID_Intern = id;
+            d.internaciones.ID_Intern = id;
+            if (!d.internaciones.ID_Paciente) d.internaciones.ID_Paciente = d.pacientes.DNI_Paciente || '';
+            if (!d.internaciones.Apellido) d.internaciones.Apellido = d.pacientes.Apellido || '';
+            d.laboratorio.ID_Intern = id;
+            d.medicacion.ID_Intern = id;
+            (d.procedimientos_all || []).forEach((p, n) => {
+                p.ID_Intern = id;
+                p.ID_Proc = id ? (id + '_P' + (n + 1)) : ('P' + (n + 1));
+            });
+            let prev = null;
+            if (r.medPrevia) { prev = structuredClone(r.medPrevia); prev.ID_Intern = id; }
+            return { d: d, prev: prev };
+        }
+
+        function loteTsv(obj, cols) {
+            return cols.map(c => (obj[c] === undefined || obj[c] === null) ? '' : obj[c]).join('\t');
+        }
+
+        function loteAvisoIds(filas) {
+            const sin = filas.filter(r => !r.idIntern).length;
+            return sin ? ` &#x26A0;&#xFE0F; ${sin} fila(s) SIN ID Internaci&oacute;n — complet&aacute; la columna y volv&eacute; a copiar, o carg&aacute; los ID a mano en el Sheet.` : '';
+        }
+
+        function loteAlerta(msg) {
+            document.getElementById('loteAlert').innerHTML = `<div class="alert alert-info">${msg}</div>`;
+        }
+
+        function copiarLote(hoja) {
+            const filas = loteFilasIncluidas();
+            if (!filas.length) { loteAlerta('No hay filas incluidas para copiar.'); return; }
+            const lineas = [];
+            for (const r of filas) {
+                const st = loteStamp(r);
+                if (hoja === 'pacientes') lineas.push(loteTsv(st.d.pacientes, COL_PACIENTES));
+                else if (hoja === 'laboratorio') lineas.push(loteTsv(st.d.laboratorio, COL_LABORATORIO));
+                else if (hoja === 'medicacion') lineas.push(loteTsv(st.d.medicacion, COL_MEDICACION));
+                else if (hoja === 'medicacion_previa') { if (st.prev) lineas.push(loteTsv(st.prev, COL_MEDICACION)); }
+                else if (hoja === 'procedimientos') {
+                    for (const p of (st.d.procedimientos_all || [])) lineas.push(loteTsv(p, COL_PROCEDIMIENTOS));
+                }
+            }
+            if (!lineas.length) { loteAlerta('Ninguna fila incluida tiene datos para esa hoja.'); return; }
+            const nombres = {
+                pacientes: 'Pacientes (' + COL_PACIENTES.length + ' cols)',
+                laboratorio: 'Laboratorio (' + COL_LABORATORIO.length + ' cols)',
+                medicacion: 'Medicaci&oacute;n (' + COL_MEDICACION.length + ' cols, Momento Egreso)',
+                medicacion_previa: 'Medicaci&oacute;n (' + COL_MEDICACION.length + ' cols, Momento Previo — peg&aacute; DEBAJO de las filas de egreso)',
+                procedimientos: 'Procedimientos (' + COL_PROCEDIMIENTOS.length + ' cols)'
+            };
+            navigator.clipboard.writeText(lineas.join('\n')).then(() => {
+                loteAlerta(`&#x1F4CB; ${lineas.length} fila(s) copiadas &rarr; hoja ${nombres[hoja]}. Peg&aacute; en la primera fila libre.` + loteAvisoIds(filas));
+            });
+        }
+
+        function copiarLoteInt1() {
+            const filas = loteFilasIncluidas();
+            if (!filas.length) { loteAlerta('No hay filas incluidas para copiar.'); return; }
+            const cols = ['ID_Intern', 'ID_Paciente', 'Apellido', 'Fecha_Ing', 'Fecha_Egr'];
+            const tsv = filas.map(r => loteTsv(loteStamp(r).d.internaciones, cols)).join('\n');
+            navigator.clipboard.writeText(tsv).then(() => {
+                loteAlerta(`&#x1F4CB; Internaciones parte 1: ${filas.length} filas &times; ${cols.length} cols (A-E). Peg&aacute; en la col A de la primera fila libre. NO cambies los tildes antes de copiar la parte 2.` + loteAvisoIds(filas));
+            });
+        }
+
+        function copiarLoteInt2() {
+            const filas = loteFilasIncluidas();
+            if (!filas.length) { loteAlerta('No hay filas incluidas para copiar.'); return; }
+            const cols = COL_INTERNACIONES.slice(9);
+            const tsv = filas.map(r => loteTsv(loteStamp(r).d.internaciones, cols)).join('\n');
+            navigator.clipboard.writeText(tsv).then(() => {
+                loteAlerta(`&#x1F4CB; Internaciones parte 2: ${filas.length} filas &times; ${cols.length} cols. Peg&aacute; en la col J de la MISMA primera fila que la parte 1.` + loteAvisoIds(filas));
+            });
+        }
+
+        // =====================================================
         // LIMPIAR
         // =====================================================
 
@@ -2175,6 +2674,12 @@ El extractor detecta autom&aacute;ticamente:
             ['orderPac', 'orderInt', 'orderProc', 'orderLab', 'orderMed', 'orderSeg'].forEach(id => document.getElementById(id).innerHTML = '');
             datos = { pacientes: {}, internaciones: {}, procedimientos: {}, laboratorio: {}, medicacion: {}, seguimiento: {} };
             datosMedPrevia = null;
+            // v4.17 — reset del Modo Lote
+            loteResultados = [];
+            document.getElementById('tableLote').innerHTML = '';
+            document.getElementById('loteStats').innerHTML = '';
+            document.getElementById('loteAlert').innerHTML = '';
+            setLoteVisible(false);
         }
     </script>
 </body>
