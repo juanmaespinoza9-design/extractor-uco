@@ -219,7 +219,7 @@
 <body>
     <div class="container">
         <h1>&#x1FAC0; Extractor UCO v4</h1>
-        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 63 | Internaciones <b>119</b> | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 47) &mdash; <b>v4.21 · Lote PDF solo local (oculto en la web) · Apellido en Internaciones (col C) · Cat&aacute;logo Dx v2 (36 cat.) · FA bloqueada&rarr;Otro · fix motivo multi-l&iacute;nea · Control MCP · Lab/Hb · eco previo</b></p>
+        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 63 | Internaciones <b>119</b> | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 47) &mdash; <b>v4.22</b></p>
 
         <div class="main-layout">
             <div class="panel">
@@ -508,7 +508,11 @@ El extractor detecta autom&aacute;ticamente:
                 [/insuficiencia renal aguda|injuria renal aguda|fracaso renal/, 'Insuficiencia renal aguda'],
                 // POP antes que valvulopatía: "postoperatorio de reemplazo valvular" es POP.
                 [/postoperatorio|post.?operatori|post.?quir[uú]rgic|endarterectom[ií]a|reemplazo valvular|\btavi\b/, 'Postoperatorio de procedimiento cardiovascular'],
-                [/valvulopat[ií]a|(estenosis|insuficiencia)\s+(a[oó]rtica|mitral|tric[uú]spide)\s+(severa|cr[ií]tica)|\beao\s+severa\b/, 'Valvulopatía severa / descompensada'],
+                // v4.22 (caso BAEZ): acepta "insuficiencia/estenosis VALVULAR aórtica" —
+                // con la palabra "valvular" interpuesta la regla vieja no matcheaba y el
+                // motivo caía en Otro. En el motivo no se exige "severa": si es el motivo
+                // de internación, la valvulopatía es la protagonista.
+                [/valvulopat[ií]a|(estenosis|insuficiencia)\s+valvular\s+(a[oó]rtica|mitral|tric[uú]spide|pulmonar)|(estenosis|insuficiencia)\s+(a[oó]rtica|mitral|tric[uú]spide)\s+(severa|cr[ií]tica)|\beao\s+severa\b/, 'Valvulopatía severa / descompensada'],
                 [/disecci[oó]n a[oó]rtica|s[ií]ndrome a[oó]rtico|hematoma intramural|[uú]lcera a[oó]rtica penetrante/, 'Síndrome aórtico agudo (disección)'],
                 [/aleteo auricular|\bflutter\b/, 'Aleteo auricular'],
                 [/fibrilaci[oó]n auricular|\bfaarv\b|\bfa\b de (alta|reciente)/, 'Fibrilación auricular'],
@@ -564,64 +568,120 @@ El extractor detecta autom&aacute;ticamente:
         }
 
         // iter 29 — catálogos para los menús del panel de diagnóstico (deben coincidir con la hoja _Catalogos).
-        // v4.19 — catálogo Dx v2 (iter 34). MISMO ORDEN que la columna A de _Catalogos.
+        // v4.22 — catálogo Dx v3 (iter 40): orden alfabético (colación es-AR), "Otro" al final.
+        // MISMO ORDEN que la columna A de _Catalogos.
         const CAT_PRINCIPAL_EXT = [
-            'Síndrome coronario agudo con elevación del ST',
-            'IAM sin elevación del ST',
-            'Angina inestable',
-            'Dolor precordial (INOCA)',
-            'MINOCA',
-            'Infarto tipo 2 / secundario',
-            'Angioplastia / cinecoronariografía programada',
-            'Insuficiencia cardíaca descompensada',
-            'Edema agudo de pulmón',
-            'Shock cardiogénico',
-            'Síndrome de bajo volumen minuto',
-            'Síndrome cardiorrenal',
-            'Insuficiencia renal aguda',
-            'Fibrilación auricular',
             'Aleteo auricular',
+            'Angina inestable',
+            'Angioplastia / cinecoronariografía programada',
+            'BAV 1° grado',
+            'BAV 2:1',
+            'BAV 2° grado',
+            'BAV completo',
+            'Bradicardia sinusal',
+            'Dolor precordial (INOCA)',
+            'Edema agudo de pulmón',
+            'Emergencia hipertensiva',
+            'Endocarditis infecciosa',
+            'Enfermedad del nódulo sinusal',
+            'Fibrilación auricular',
+            'IAM sin elevación del ST',
+            'Implante o recambio de dispositivo programado',
+            'Infarto tipo 2 / secundario',
+            'Infección de dispositivo cardíaco',
+            'Insuficiencia cardíaca descompensada',
+            'Insuficiencia renal aguda',
+            'MINOCA',
+            'Miocarditis / pericarditis aguda',
+            'Paro cardiorrespiratorio recuperado',
+            'Postoperatorio de procedimiento cardiovascular',
+            'Shock cardiogénico',
+            'Síncope',
+            'Síndrome aórtico agudo (disección)',
+            'Síndrome cardiorrenal',
+            'Síndrome coronario agudo con elevación del ST',
+            'Síndrome de bajo volumen minuto',
             'Taquicardia supraventricular',
             'Taquicardia ventricular',
-            'BAV 1° grado',
-            'BAV 2° grado',
-            'BAV 2:1',
-            'BAV completo',
-            'Enfermedad del nódulo sinusal',
-            'Bradicardia sinusal',
-            'Paro cardiorrespiratorio recuperado',
-            'Síncope',
-            'Implante o recambio de dispositivo programado',
-            'Valvulopatía severa / descompensada',
-            'Síndrome aórtico agudo (disección)',
-            'Miocarditis / pericarditis aguda',
-            'Endocarditis infecciosa',
-            'Infección de dispositivo cardíaco',
-            'Emergencia hipertensiva',
-            'Urgencia hipertensiva',
             'Tromboembolismo pulmonar',
-            'Postoperatorio de procedimiento cardiovascular',
+            'Urgencia hipertensiva',
+            'Valvulopatía severa / descompensada',
             'Otro'
         ];
+        // v4.22 — Dx_Secundario v3 (iter 40): depurado por el usuario (se van IC
+        // descompensada / shock-SBVM / cardiorrenal / síncope, renombres FAARV-AARV,
+        // SCA fusionado, TEP, NAC, Sepsis) + 10 categorías quirúrgicas nuevas.
+        // Alfabético; "Otro procedimiento cardiovascular" y "Otro" cierran la lista.
+        // MISMO ORDEN que la columna B de _Catalogos.
         const CAT_SECUNDARIO_EXT = [
-            'Fibrilación / aleteo auricular', 'Anemia',
-            'Insuficiencia cardíaca descompensada',
-            'Síndrome coronario agudo sin elevación del ST / angina inestable',
-            'Síndrome coronario agudo con elevación del ST',
-            'Taquicardia ventricular / arritmia ventricular',
-            'Taquicardia supraventricular paroxística / auricular',
-            'Bradiarritmia / bloqueo aurículo-ventricular / enfermedad del nódulo sinusal',
-            'Shock cardiogénico / síndrome de bajo volumen minuto',
-            'Síndrome cardiorrenal / insuficiencia renal aguda',
-            'Edema agudo de pulmón', 'Emergencia / urgencia hipertensiva', 'Síncope',
-            'Endocarditis infecciosa', 'Tromboembolismo pulmonar',
-            'Neumonía (asociada a ventilación / adquirida)', 'Infección urinaria',
-            'Infección asociada a catéter / foco endovascular', 'Bacteriemia / sepsis',
-            'Infección de piel y partes blandas', 'Infección de dispositivo',
+            'Accidente cerebrovascular / AIT intra-internación',
+            'Anemia',
+            'Bradicardia / Bloqueo AV / ENS',
+            'Cirugía de aorta (Bentall / aorta ascendente)',
+            'CRM — 1 puente',
+            'CRM — 2 puentes',
+            'CRM — 3 puentes',
+            'CRM + reemplazo valvular',
+            'Edema agudo de pulmón',
+            'Emergencia / urgencia hipertensiva',
+            'Endocarditis infecciosa',
+            'FAARV / AARV',
+            'Infección asociada a catéter / foco endovascular',
+            'Infección de dispositivo',
+            'Infección de piel y partes blandas',
+            'Infección urinaria',
             'Insuficiencia renal aguda / reagudizada',
-            'Accidente cerebrovascular / AIT intra-internación', 'Otro'
+            'Neumonía Adquirida en Comunidad',
+            'Plástica valvular',
+            'Reemplazo valvular aórtico — biológico',
+            'Reemplazo valvular aórtico — mecánico',
+            'Reemplazo valvular mitral',
+            'Sepsis / Bacteriemia',
+            'Síndrome coronario agudo',
+            'Taquicardia supraventricular paroxística / auricular',
+            'Taquicardia ventricular / arritmia ventricular',
+            'TEP',
+            'Otro procedimiento cardiovascular',
+            'Otro'
         ];
-        function poblarDxSelects(sugPrincipal) {
+
+        // v4.22 (caso BAEZ, iter 40) — Cirugía cardíaca central realizada en ESTA
+        // internación. Devuelve null si no hubo, o { tipo, dxSec }:
+        //   tipo  → valor para Procedimientos.Tipo (debe existir en el dropdown del Sheet)
+        //   dxSec → categoría sugerida para Dx_Secundario ('' si falta el detalle)
+        // Se evalúa sobre iTexto (post-split de antecedentes y post-recorte), así una
+        // cirugía vieja de los antecedentes no genera fila. Además exige contexto de
+        // cirugía EFECTUADA (POP/CEC/esternotomía/"se realizó"): una válvula "programada
+        // para reemplazo en diferido" no es un procedimiento de esta internación.
+        function detectarCirugiaCardiaca(iTexto) {
+            const t = (iTexto || '').toLowerCase().replace(/\s+/g, ' ');
+            if (!t) return null;
+            const efectuada = /postoperatorio|post ?operatori|post ?quir[uú]rgic|\bpop\b|circulaci[oó]n extracorp[oó]rea|\bcec\b|salida de bomba|tiempo de (?:bomba|clampeo)|esternotom[ií]a|se realiz[oó][^.]{0,120}(?:reemplazo|crm|by ?pass|revascularizaci[oó]n quir|pl[aá]stica|bentall)/.test(t);
+            if (!efectuada) return null;
+            const hasBentall = /\bbentall\b|tubo valvulado|reemplazo de (?:la )?aorta ascendente/.test(t);
+            const hasRVAo = /reemplazo valvular a[oó]rtic\w*|reemplazo de (?:la )?v[aá]lvula a[oó]rtica|\brvao\b|\brva\b/.test(t);
+            const hasRVM = /reemplazo valvular mitral|reemplazo de (?:la )?v[aá]lvula mitral|\brvm\b/.test(t);
+            const hasPlastica = /pl[aá]stica (?:mitral|tric[uú]spide|valvular|de (?:la )?v[aá]lvula)/.test(t);
+            const hasCRM = /\bcrm\b|cirug[ií]a de revascularizaci[oó]n|revascularizaci[oó]n mioc[aá]rdica quir|by ?pass (?:aorto)?coronario|puentes? (?:aorto)?coronario/.test(t);
+            if (!hasBentall && !hasRVAo && !hasRVM && !hasPlastica && !hasCRM) return null;
+            // Anclado a válvula/prótesis: "ventilación mecánica" o "terapia biológica"
+            // no deben definir el tipo de prótesis.
+            const mecanica = /v[aá]lvula (?:\w+ ){0,2}?mec[aá]nica|pr[oó]tesis (?:\w+ ){0,2}?mec[aá]nica|mec[aá]nica \(n/.test(t);
+            const biologica = /v[aá]lvula (?:\w+ ){0,2}?biol[oó]gica|pr[oó]tesis (?:\w+ ){0,2}?biol[oó]gica|biopr[oó]tesis/.test(t);
+            if (hasBentall) return { tipo: 'Cirugia de aorta', dxSec: 'Cirugía de aorta (Bentall / aorta ascendente)' };
+            if (hasCRM && (hasRVAo || hasRVM || hasPlastica)) return { tipo: 'Cirugia combinada (CRM+RV)', dxSec: 'CRM + reemplazo valvular' };
+            if (hasRVAo) return { tipo: 'RVAo', dxSec: mecanica ? 'Reemplazo valvular aórtico — mecánico' : (biologica ? 'Reemplazo valvular aórtico — biológico' : '') };
+            if (hasRVM) return { tipo: 'RVM', dxSec: 'Reemplazo valvular mitral' };
+            if (hasPlastica) return { tipo: 'Plastica valvular', dxSec: 'Plástica valvular' };
+            // CRM sola: el nº de puentes define la categoría; sin cantidad queda a mano.
+            let dxCRM = '';
+            if (/\b3 (?:puentes|by ?pass)|tres (?:puentes|by ?pass)|triple (?:puente|by ?pass)/.test(t)) dxCRM = 'CRM — 3 puentes';
+            else if (/\b2 (?:puentes|by ?pass)|dos (?:puentes|by ?pass)|doble (?:puente|by ?pass)/.test(t)) dxCRM = 'CRM — 2 puentes';
+            else if (/\b1 (?:puente|by ?pass)|un (?:puente|by ?pass)|puente [uú]nico/.test(t)) dxCRM = 'CRM — 1 puente';
+            return { tipo: 'CRM', dxSec: dxCRM };
+        }
+
+        function poblarDxSelects(sugPrincipal, sugSecundario) {
             const p = document.getElementById('dxPrincipalSel'), s = document.getElementById('dxSecundarioSel');
             if (!p || !s) return;
             const opt = (v) => { const o = document.createElement('option'); o.value = v; o.textContent = v || '—'; return o; };
@@ -629,7 +689,7 @@ El extractor detecta autom&aacute;ticamente:
             p.appendChild(opt(''));
             CAT_PRINCIPAL_EXT.forEach(c => { const o = opt(c); if (c === sugPrincipal) o.selected = true; p.appendChild(o); });
             s.appendChild(opt(''));
-            CAT_SECUNDARIO_EXT.forEach(c => s.appendChild(opt(c)));
+            CAT_SECUNDARIO_EXT.forEach(c => { const o = opt(c); if (c === sugSecundario) o.selected = true; s.appendChild(o); });
             const mt = document.getElementById('dxMotivoTxt');
             if (mt) mt.textContent = (datos.internaciones && datos.internaciones.Motivo_Texto) || '—';
         }
@@ -1268,8 +1328,14 @@ El extractor detecta autom&aacute;ticamente:
 
             // Alergia a fármacos (iter 26 v4.10) — captura "alergia a X" / "alérgico a X" / "RAM a X".
             // Default "No" si no encuentra. Si captura, devuelve el texto de la droga/clase (max 80 chars).
-            const alergiaMatch = texto.match(/(?:alerg[ií]a?\s+(?:a\s+)?|al[eé]rgico[s]?\s+a\s+|RAM\s+(?:a\s+)?)([^\n.,;]{2,80})/i);
-            datos.pacientes.Alergia_Farmaco = alergiaMatch ? alergiaMatch[1].trim() : 'No';
+            // FIX v4.22 (caso FRATANTUENO): "RAM" sin \b matcheaba el final de palabras
+            // como "electrocardiograma"/"programa" y capturaba la posología siguiente
+            // ("10 mg (1 comprimido) a las 8 am"). Ahora RAM exige límite de palabra y
+            // preposición, y toda captura que empiece con dosis o negación se descarta.
+            const alergiaMatch = texto.match(/(?:\balerg[ií]as?\s*:?\s*(?:a\s+)?|al[eé]rgic[oa]s?\s+a\s+|\bRAM\b\s+a\s+)([^\n.,;]{2,80})/i);
+            let _alergia = alergiaMatch ? alergiaMatch[1].trim() : 'No';
+            if (/^\d+[\s.]*(?:mg|mcg|g|gr|ml|ui|comprimido)/i.test(_alergia) || /^(?:no\b|niega|sin\b|desconoce)/i.test(_alergia)) _alergia = 'No';
+            datos.pacientes.Alergia_Farmaco = _alergia;
 
             // FRCV
             datos.pacientes.HTA = buscarSiNo(textoLower, ['hipertens', '\\bhta\\b']);
@@ -1548,7 +1614,18 @@ El extractor detecta autom&aacute;ticamente:
                 : (anclaFull ? norm(anclaFull[1]) : ''));
             // Diagnóstico Principal (categoría sugerida — el residente la confirma/corrige en el dropdown)
             datos.internaciones.Dx_Principal_Categoria = mapearDxPrincipal(datos.internaciones.Motivo_Texto);
-            datos.internaciones.Dx_Secundario_Categoria = ''; // opcional, lo elige el residente
+            // Dx Secundario (v4.22): si hubo cirugía cardíaca en esta internación se
+            // sugiere la categoría quirúrgica (tipo de válvula / nº de puentes);
+            // si no, queda vacío y lo elige el residente.
+            const _cxDx = detectarCirugiaCardiaca(iTexto);
+            datos.internaciones.Dx_Secundario_Categoria = _cxDx ? _cxDx.dxSec : '';
+            // v4.22 (caso BAEZ): si la internación fue el POP de una cirugía y el motivo
+            // era la valvulopatía que se operó (o no mapeó a nada), el principal es POP.
+            // Un motivo agudo con nombre propio (endocarditis, IAM, etc.) NO se pisa:
+            // ahí la cirugía va como Dx Secundario ("Endocarditis + reemplazo valvular").
+            if (_cxDx && ['Otro', 'Valvulopatía severa / descompensada', ''].includes(datos.internaciones.Dx_Principal_Categoria)) {
+                datos.internaciones.Dx_Principal_Categoria = 'Postoperatorio de procedimiento cardiovascular';
+            }
 
             // Diagnósticos
             datos.internaciones.Programado = buscarSiNo(iLower, ['programad']);
@@ -2122,6 +2199,28 @@ El extractor detecta autom&aacute;ticamente:
                 procList.push(crearProc('Ablación'));
             }
 
+            // Cirugía cardíaca central (v4.22, caso BAEZ — iter 40): reemplazo valvular,
+            // CRM, plástica, cirugía combinada o Bentall hechos en ESTA internación
+            // generan su fila en Procedimientos (antes solo quedaba el flag
+            // POP_Cx_Valvular de Internaciones y la cirugía no contaba como procedimiento).
+            const cxCardiaca = detectarCirugiaCardiaca(iTexto);
+            if (cxCardiaca) {
+                const pCx = crearProc(cxCardiaca.tipo);
+                // Éxito default "Sí": el fracaso se escribe explícito (óbito en quirófano,
+                // salida de bomba fallida); "salida de bomba exitosa" confirma.
+                pCx['Éxito'] = /[oó]bito (?:en|intra) ?quir[oó]fano|salida de bomba (?:fallida|dificultosa)|no logr[oó] salida de bomba/i.test(iTexto) ? 'No' : 'Sí';
+                pCx['Complicación'] = (
+                    /(?:presento|presentó|tuvo|con|hubo)\s+complicaci[oó]n/i.test(iTexto) ||
+                    /complicaci[oó]n[:\s-]+(?:hematoma|sangrado|disecci|rotura|trombosis|ictus|infarto|perforaci|taponamiento|mediastinitis)/i.test(iTexto)
+                ) ? 'Sí' : 'No';
+                // "Sangrado habitual/esperado" del POP de cirugía cardíaca NO es
+                // complicación hemorrágica — el genérico buscarSiNo lo marcaría Sí.
+                pCx.Sangrado = /sangrado (?:habitual|esperado|normal|escaso|m[ií]nimo)/i.test(iTexto) ? 'No' : buscarSiNo(iLower, ['sangrado', 'hemorragia']);
+                pCx.Hematoma = buscarSiNo(iLower, ['hematoma']);
+                pCx.Reinterv = buscarSiNo(iLower, ['reintervenci[oó]n']);
+                procList.push(pCx);
+            }
+
             // Auto-generar ID_Proc: {ID_Intern}_P1, _P2, etc.
             for (let p = 0; p < procList.length; p++) {
                 procList[p].ID_Proc = idInternacion ? (idInternacion + '_P' + (p + 1)) : ('P' + (p + 1));
@@ -2268,7 +2367,7 @@ El extractor detecta autom&aacute;ticamente:
 
             renderTable('tablePacientes', datos.pacientes, COL_PACIENTES);
             renderTable('tableInternaciones', datos.internaciones, COL_INTERNACIONES);
-            poblarDxSelects(datos.internaciones.Dx_Principal_Categoria);
+            poblarDxSelects(datos.internaciones.Dx_Principal_Categoria, datos.internaciones.Dx_Secundario_Categoria);
             renderTableMulti('tableProcedimientos', datos.procedimientos_all || [datos.procedimientos], COL_PROCEDIMIENTOS);
             renderTable('tableLaboratorio', datos.laboratorio, COL_LABORATORIO);
             renderTable('tableMedicacion', datos.medicacion, COL_MEDICACION);
