@@ -219,7 +219,7 @@
 <body>
     <div class="container">
         <h1>&#x1FAC0; Extractor UCO v4</h1>
-        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 63 | Internaciones <b>119</b> | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 47) &mdash; <b>v4.22</b></p>
+        <p class="subtitle">Extrae datos del epicrisis &rarr; Base UCO (Pacientes 63 | Internaciones <b>119</b> | Procedimientos 14 | Laboratorio 16 | Medicaci&oacute;n 35 | Seguimiento 47) &mdash; <b>v4.23</b></p>
 
         <div class="main-layout">
             <div class="panel">
@@ -494,12 +494,24 @@ El extractor detecta autom&aacute;ticamente:
                 // SCA — "sin elevación" ANTES que "con elevación": la frase negativa
                 // contiene a la positiva como substring.
                 [/scasest|iamsest|(sca|iam)\s+sin\s+elevaci|sin\s+elevaci[oó]n\s+del\s+(segmento\s+)?st/, 'IAM sin elevación del ST'],
-                [/angina inestable|angor inestable/, 'Angina inestable'],
+                // v4.23 (caso BELLONI, iter 41): "angina de reciente comienzo" es angina
+                // inestable de manual, pero la regla vieja solo reconocía la frase literal
+                // y el caso caía en Otro.
+                [/angina inestable|angor inestable|ang(?:ina|or) de reciente comienzo|ang(?:ina|or) de reposo|angina progresiva/, 'Angina inestable'],
                 [/minoca/, 'MINOCA'],
                 [/\binoca\b|dolor precordial/, 'Dolor precordial (INOCA)'],
                 [/infarto tipo 2|iam tipo 2|iam secundario/, 'Infarto tipo 2 / secundario'],
                 [/elevaci[oó]n del\s+(segmento\s+)?st|scacest|iamcest|supradesnivel del\s+(segmento\s+)?st/, 'Síndrome coronario agudo con elevación del ST'],
                 [/angioplast[ií]a\s+program|cinecoronariograf[ií]a\s+program|program.*(atc|angioplast|hemodin|coronariograf)|(atc|ccg).*program/, 'Angioplastia / cinecoronariografía programada'],
+                // v4.23 (iter 41) — procedimientos programados NO coronarios. Los tres
+                // salieron de los 13 casos en "Otro" del primer mes. Con el criterio de
+                // "gana la regla que aparece antes en el texto" no le roban casos a las
+                // arritmias: en "ablación programada de aleteo auricular" la palabra
+                // ablación abre la frase, así que gana Ablación programada.
+                [/\bablaci[oó]n\b/, 'Ablación programada'],
+                [/cierre\s+(?:percut[aá]neo\s+)?(?:de\s+)?(?:\bfop\b|foramen oval|\bcia\b|comunicaci[oó]n interauricular)/, 'Cierre percutáneo de foramen oval permeable / comunicación interauricular'],
+                // "perfi" cubre el error de tipeo real del caso WINDESKER ("angioplastia perfierica").
+                [/angioplast[ií]a\s+perif|angioplast[ií]a\s+perfi|angioplast[ií]a\s+(?:supravalvular|pulmonar|renal|carot[ií]dea|il[ií]aca|femoral|subclavia|de\s+(?:arteria|aorta))|valvuloplastia|endopr[oó]tesis|endoprotesis/, 'Procedimiento vascular periférico o estructural no coronario'],
                 [/edema agudo de pulm[oó]n|\beap\b/, 'Edema agudo de pulmón'],
                 [/shock cardiog[eé]nico/, 'Shock cardiogénico'],
                 [/bajo volumen minuto|\bsbvm\b/, 'Síndrome de bajo volumen minuto'],
@@ -517,7 +529,12 @@ El extractor detecta autom&aacute;ticamente:
                 [/aleteo auricular|\bflutter\b/, 'Aleteo auricular'],
                 [/fibrilaci[oó]n auricular|\bfaarv\b|\bfa\b de (alta|reciente)/, 'Fibrilación auricular'],
                 [/taquicardia paroxist|taquicardia supraventricular|\btps\b|\btpsv\b|taquicardia auricular/, 'Taquicardia supraventricular'],
-                [/taquicardia ventricular|arritmia ventricular|\btvs\b|\btvns\b|\btv\b/, 'Taquicardia ventricular'],
+                // v4.23 (iter 41) — extrasistolia y bigeminia sintomáticas: 3 casos del
+                // primer mes caían en Otro. Va ANTES de 'Taquicardia ventricular' porque
+                // en "taquicardia ventricular no sostenida" las dos reglas matchean en la
+                // misma posición y el desempate es el orden del array.
+                [/extras[ií]stole|extrasistoli|bigeminia|trigeminia|\btvns\b|taquicardia ventricular no sostenida/, 'Arritmia ventricular no sostenida'],
+                [/taquicardia ventricular|arritmia ventricular|\btvs\b|\btv\b/, 'Taquicardia ventricular'],
                 // Bradiarritmias con grado explícito (el genérico va en R_FALLBACK).
                 // `BAV_` cubre las dos formas de escribirlo: sigla y frase completa.
                 [rx('BAV_\\s*(?:de\\s*)?(?:completo|tercer\\s*grado|3(?:er)?\\s*grado|iii|alto\\s*grado)'), 'BAV completo'],
@@ -536,7 +553,10 @@ El extractor detecta autom&aacute;ticamente:
                 [/miocarditis|pericarditis|taponamiento card[ií]aco/, 'Miocarditis / pericarditis aguda'],
                 [/emergencia hipertensiv/, 'Emergencia hipertensiva'],
                 [/urgencia hipertensiv|crisis hipertensiv|hipertensi[oó]n arterial severa|\bhta\b severa/, 'Urgencia hipertensiva'],
-                [/tromboembolismo pulmonar|\btep\b/, 'Tromboembolismo pulmonar']
+                [/tromboembolismo pulmonar|\btep\b/, 'Tromboembolismo pulmonar'],
+                // v4.23 (iter 41, caso BOSQUE) — no colisiona con urgencia/emergencia
+                // hipertensiva, que exigen la palabra "hipertensiv-".
+                [/hipertensi[oó]n\s+(?:arterial\s+)?pulmonar|\bhtp\b/, 'Hipertensión pulmonar']
             ];
             // Genéricos: solo se consultan si NINGUNA regla de R matcheó. Van aparte
             // porque compiten mal por posición — "bloqueo AV de segundo grado" arranca
@@ -568,23 +588,29 @@ El extractor detecta autom&aacute;ticamente:
         }
 
         // iter 29 — catálogos para los menús del panel de diagnóstico (deben coincidir con la hoja _Catalogos).
-        // v4.22 — catálogo Dx v3 (iter 40): orden alfabético (colación es-AR), "Otro" al final.
+        // v4.23 — catálogo Dx v4 (iter 41): las 36 de v3 + 5 categorías que salieron de
+        // auditar los 13 casos que cayeron en "Otro" en el primer mes de uso real
+        // (27% de 49 internaciones). Orden alfabético (colación es-AR), "Otro" al final.
         // MISMO ORDEN que la columna A de _Catalogos.
         const CAT_PRINCIPAL_EXT = [
+            'Ablación programada',
             'Aleteo auricular',
             'Angina inestable',
             'Angioplastia / cinecoronariografía programada',
+            'Arritmia ventricular no sostenida',
             'BAV 1° grado',
             'BAV 2:1',
             'BAV 2° grado',
             'BAV completo',
             'Bradicardia sinusal',
+            'Cierre percutáneo de foramen oval permeable / comunicación interauricular',
             'Dolor precordial (INOCA)',
             'Edema agudo de pulmón',
             'Emergencia hipertensiva',
             'Endocarditis infecciosa',
             'Enfermedad del nódulo sinusal',
             'Fibrilación auricular',
+            'Hipertensión pulmonar',
             'IAM sin elevación del ST',
             'Implante o recambio de dispositivo programado',
             'Infarto tipo 2 / secundario',
@@ -595,6 +621,7 @@ El extractor detecta autom&aacute;ticamente:
             'Miocarditis / pericarditis aguda',
             'Paro cardiorrespiratorio recuperado',
             'Postoperatorio de procedimiento cardiovascular',
+            'Procedimiento vascular periférico o estructural no coronario',
             'Shock cardiogénico',
             'Síncope',
             'Síndrome aórtico agudo (disección)',
